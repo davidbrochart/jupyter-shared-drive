@@ -1,0 +1,94 @@
+ci:
+  # skip any check that needs internet access
+  skip: [prettier, eslint, stylelint]
+
+default_language_version:
+  node: system
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: end-of-file-fixer
+        # Version bump conflict with this hook
+        exclude: "^package\\.json$"
+      - id: check-case-conflict
+      - id: check-executables-have-shebangs
+      - id: requirements-txt-fixer
+      - id: check-added-large-files
+      - id: check-case-conflict
+      - id: check-toml
+      - id: check-yaml
+      - id: debug-statements
+      - id: forbid-new-submodules
+      - id: check-builtin-literals
+      - id: trailing-whitespace
+
+  - repo: https://github.com/psf/black
+    rev: 22.12.0
+    hooks:
+      - id: black
+
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+        files: \.py$
+
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.3.1
+    hooks:
+      - id: pyupgrade
+        args: [--py37-plus]
+
+  - repo: https://github.com/PyCQA/doc8
+    rev: v1.1.1
+    hooks:
+      - id: doc8
+        args: [--max-line-length=200]
+        stages: [manual]
+
+  - repo: https://github.com/pycqa/flake8
+    rev: 6.0.0
+    hooks:
+      - id: flake8
+        additional_dependencies:
+          ["flake8-bugbear==22.6.22", "flake8-implicit-str-concat==0.2.0"]
+        stages: [manual]
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v0.991
+    hooks:
+      - id: mypy
+        exclude: "(^binder/jupyter_config\\.py$)|(/setup\\.py$)"
+        args: ["--config-file", "pyproject.toml"]
+        additional_dependencies: [tornado, pytest]
+        stages: [manual]
+
+  - repo: https://github.com/sirosen/check-jsonschema
+    rev: 0.21.0
+    hooks:
+      - id: check-jsonschema
+        name: "Check GitHub Workflows"
+        files: ^\.github/workflows/
+        types: [yaml]
+        args: ["--schemafile", "https://json.schemastore.org/github-workflow"]
+        stages: [manual]
+
+  - repo: local
+    hooks:
+      - id: prettier
+        name: prettier
+        entry: 'jlpm run prettier'
+        language: node
+        types_or: [json, ts, tsx, javascript, jsx, css]
+      - id: eslint
+        name: eslint
+        entry: 'jlpm run eslint'
+        language: node
+        types_or: [ts, tsx, javascript, jsx]
+      - id: stylelint
+        name: stylelint
+        entry: 'jlpm run stylelint'
+        language: node
+        types: [css]

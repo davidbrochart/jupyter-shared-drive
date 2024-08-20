@@ -1,0 +1,73 @@
+{
+  "name": "@jupyter/shared-drive",
+  "version": "0.1.1",
+  "description": "JupyterLab - Shared drive",
+  "homepage": "https://github.com/davidbrochart/jupyter-shared-drive",
+  "bugs": {
+    "url": "https://github.com/davidbrochart/jupyter-shared-drive/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/davidbrochart/jupyter-shared-drive.git"
+  },
+  "license": "BSD-3-Clause",
+  "author": "Project Jupyter",
+  "sideEffects": [
+    "style/*.css",
+    "style/index.js"
+  ],
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "style": "style/index.css",
+  "directories": {
+    "lib": "lib/"
+  },
+  "files": [
+    "lib/*.d.ts",
+    "lib/*.js.map",
+    "lib/*.js",
+    "style/*.css",
+    "style/index.js"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "build:prod": "jlpm run build",
+    "clean": "rimraf lib tsconfig.tsbuildinfo",
+    "clean:lib": "jlpm run clean:all",
+    "clean:all": "rimraf lib tsconfig.tsbuildinfo node_modules",
+    "install:extension": "jlpm run build",
+    "watch": "tsc -b --watch"
+  },
+  "dependencies": {
+    "@codemirror/state": "^6.2.0",
+    "@codemirror/view": "^6.7.0",
+    "@jupyter/shared-docprovider": "^0.1.0",
+    "@jupyterlab/apputils": "^4.0.5",
+    "@jupyterlab/coreutils": "^6.0.5",
+    "@jupyterlab/docregistry": "^4.0.5",
+    "@jupyterlab/services": "^7.0.5",
+    "@jupyterlab/ui-components": "^4.0.5",
+    "@lumino/coreutils": "^2.1.0",
+    "@lumino/signaling": "^2.0.0",
+    "@lumino/virtualdom": "^2.0.0",
+    "@lumino/widgets": "^2.1.0",
+    "react": "^18.2.0",
+    "y-protocols": "^1.0.5",
+    "yjs": "^13.5.40"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.27",
+    "rimraf": "^4.1.2",
+    "typescript": "~5.0.4"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "typedoc": {
+    "entryPoint": "./src/index.ts",
+    "readmeFile": "./README.md",
+    "displayName": "@jupyter/shared-drive",
+    "tsconfig": "./tsconfig.json"
+  },
+  "styleModule": "style/index.js"
+}
