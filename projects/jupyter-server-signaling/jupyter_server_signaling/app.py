@@ -19,9 +19,9 @@ class SignalingExtension(ExtensionApp):
         "api/shared_drive/signaling",
         config=True,
         help="""A comma-separated list of signaling server URLs to connect to, e.g.
-        'api/shared_drive/signaling,ws://127.0.0.1:4444,wss://signaling.yjs.dev'.
-        If the URL starts with 'ws://' or 'wss:/' it is considered to be an absolute URL,
-        otherwise it is considered to be relative to the Jupyter server base URL.
+        'api/shared_drive/signaling,ws://127.0.0.1:4444,https://signaling.yjs.dev'.
+        If the URL starts with 'ws://', 'wss:/', 'http://' or 'https:/' it is considered to be
+        an absolute URL, otherwise it is considered to be relative to the Jupyter server base URL.
         """,
     )
 
@@ -36,7 +36,7 @@ class SignalingExtension(ExtensionApp):
         page_config.setdefault("signalingServers", signaling_servers)
 
         for url in signaling_servers:
-            if not url.startswith(("ws://", "wss://")):
+            if not url.startswith(("ws://", "wss://", "http://", "https://")):
                 if not url.startswith("/"):
                     url = f"/{url}"
                 print(f"{url=}")

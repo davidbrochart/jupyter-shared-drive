@@ -62,7 +62,7 @@ export class SharedDrive implements ISharedDrive {
     this.sharedModelFactory = new SharedModelFactory(this._onCreate);
     this.serverSettings = ServerConnection.makeSettings();
     signalingServers.forEach((url: string) => {
-      if (url.startsWith('ws://') || url.startsWith('wss://')) {
+      if (url.startsWith('ws://') || url.startsWith('wss://') || url.startsWith('http://') || url.startsWith('https://')) {
         // It's an absolute URL, keep it as-is.
         this._signalingServers.push(url);
       } else {
