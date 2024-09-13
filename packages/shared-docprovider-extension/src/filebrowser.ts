@@ -17,7 +17,7 @@ import {
   IFileBrowserFactory
 } from '@jupyterlab/filebrowser';
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
-import { ITranslator } from '@jupyterlab/translation';
+import { ITranslator, nullTranslator } from '@jupyterlab/translation';
 
 import { YFile, YNotebook } from '@jupyter/ydoc';
 
@@ -32,14 +32,15 @@ export const drive: JupyterFrontEndPlugin<ISharedDrive> = {
   id: '@jupyter/docprovider-extension:drive',
   description: 'The default collaborative drive provider',
   provides: ISharedDrive,
-  requires: [IDefaultFileBrowser, ITranslator],
-  optional: [IGlobalAwareness],
+  requires: [IDefaultFileBrowser],
+  optional: [IGlobalAwareness, ITranslator],
   activate: (
     app: JupyterFrontEnd,
     defaultFileBrowser: IDefaultFileBrowser,
-    translator: ITranslator,
-    globalAwareness: Awareness | null
+    globalAwareness: Awareness | null,
+    translator: ITranslator | null
   ): ISharedDrive => {
+    translator = translator ?? nullTranslator;
     const trans = translator.load('jupyter-shared-drive');
     const drive = new SharedDrive(
       app.serviceManager.user,
@@ -131,7 +132,6 @@ export const sharedFileBrowser: JupyterFrontEndPlugin<void> = {
     IRouter,
     JupyterFrontEnd.ITreeResolver,
     ILabShell,
-    ISettingRegistry,
     ITranslator
   ],
   activate: async (
@@ -141,10 +141,11 @@ export const sharedFileBrowser: JupyterFrontEndPlugin<void> = {
     router: IRouter | null,
     tree: JupyterFrontEnd.ITreeResolver | null,
     labShell: ILabShell | null,
-    translator: ITranslator
+    translator: ITranslator | null
   ): Promise<void> => {
     const { createFileBrowser } = fileBrowserFactory;
-    //const trans = (translator ?? nullTranslator).load('jupyterlab-shared-contents');
+    translator = translator ?? nullTranslator;
+    const trans = translator.load('jupyter-shared-drive');
     app.serviceManager.contents.addDrive(drive);
 
     const widget = createFileBrowser('jp-shared-contents-browser', {
@@ -152,8 +153,7 @@ export const sharedFileBrowser: JupyterFrontEndPlugin<void> = {
       // We don't want to restore old state, we don't have a drive handle ready
       restore: false
     });
-    //widget.title.caption = trans.__('Shared Contents');
-    widget.title.caption = 'Shared Contents';
+    widget.title.caption = trans.__('Shared Drive');
     widget.title.icon = listIcon;
 
     //const importButton = new ToolbarButton({
