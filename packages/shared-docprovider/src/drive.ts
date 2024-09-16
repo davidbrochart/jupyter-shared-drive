@@ -1,6 +1,7 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
+import * as Y from 'yjs';
 import { PromiseDelegate } from '@lumino/coreutils';
 import { WebrtcProvider as YWebrtcProvider } from 'y-webrtc';
 import { ISignal, Signal } from '@lumino/signaling';
@@ -249,7 +250,7 @@ export class SharedDrive implements ISharedDrive {
     const content: any[] = [];
     const dirContent = this._ydrive.getContent(localPath);
     for (const [key, value] of dirContent) {
-      const isDir = value.get('is_dir');
+      const isDir = value.get('content') instanceof Y.Map;
       const type = isDir ? 'directory' : 'file';
       content.push({
         name: key,

@@ -17,11 +17,11 @@ export class YDrive {
   }
 
   private _newDirContent(): Y.Map<any> {
-    return new Y.Map([['is_dir', true], ['content', new Y.Map()]]);
+    return new Y.Map([['content', new Y.Map()]]);
   }
 
   private _newFileContent(): Y.Map<any> {
-    return new Y.Map([['is_dir', false], ['content', null]]);
+    return new Y.Map([['content', null]]);
   }
 
   isDir(path: string): boolean {
@@ -47,13 +47,12 @@ export class YDrive {
       if (!currentContent.has(part)) {
         throw new Error(`No entry "${part}" in "${cwd}"`);
       }
-      const current = currentContent.get(part);
-      if (current.get('is_dir')) {
+      currentContent = currentContent.get(part).get('content');
+      if (currentContent instanceof Y.Map) {
         cwd = cwd === '' ? part : `${cwd}/${part}`;
       } else if (idx < lastIdx) {
         throw new Error(`Entry "${part}" in "${cwd}" is not a directory.`);
       }
-      currentContent = current.get('content');
     }
     return currentContent;
   }
