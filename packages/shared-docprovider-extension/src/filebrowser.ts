@@ -3,8 +3,7 @@
  * Distributed under the terms of the Modified BSD License.
  */
 
-import { listIcon, refreshIcon } from '@jupyterlab/ui-components';
-//import { listIcon, fileIcon, refreshIcon } from '@jupyterlab/ui-components';
+import { fileIcon, listIcon, refreshIcon } from '@jupyterlab/ui-components';
 import {
   ILabShell,
   IRouter,
@@ -156,16 +155,16 @@ export const sharedFileBrowser: JupyterFrontEndPlugin<void> = {
     widget.title.caption = trans.__('Shared Drive');
     widget.title.icon = listIcon;
 
-    //const importButton = new ToolbarButton({
-    //  icon: fileIcon,
-    //  onClick: async () => {
-    //    let path = prompt('Please enter the path of the file to import:');
-    //    if (path !== null) {
-    //      await drive.importFile(path);
-    //    }
-    //  },
-    //  tooltip: 'Import File'
-    //});
+    const importButton = new ToolbarButton({
+      icon: fileIcon,
+      onClick: async () => {
+        let path = prompt('Please enter the path of the file to import:');
+        if (path !== null) {
+          await drive.importFile(path);
+        }
+      },
+      tooltip: 'Import File'
+    });
 
     const refreshButton = new ToolbarButton({
       icon: refreshIcon,
@@ -176,7 +175,7 @@ export const sharedFileBrowser: JupyterFrontEndPlugin<void> = {
     });
 
     widget.toolbar.insertItem(0, 'refresh', refreshButton);
-    //widget.toolbar.insertItem(1, 'import', importButton);
+    widget.toolbar.insertItem(1, 'import', importButton);
 
     app.shell.add(widget, 'left');
   }

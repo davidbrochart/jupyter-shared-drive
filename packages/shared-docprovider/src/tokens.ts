@@ -30,7 +30,7 @@ export interface ISharedDrive extends Contents.IDrive {
    */
   readonly sharedModelFactory: ISharedModelFactory;
 
-  //importFile(path: string): void;
+  importFile(path: string): void;
 }
 
 /**
@@ -47,4 +47,6 @@ export interface ISharedModelFactory extends Contents.ISharedFactory {
     type: Contents.ContentType,
     factory: SharedDocumentFactory
   ): void;
+
+  documentFactories: Map<Contents.ContentType, SharedDocumentFactory>;
 }

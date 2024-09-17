@@ -9,52 +9,42 @@ import { Path } from './path';
 export class YDrive {
   constructor() {
     this._ydoc = new Y.Doc();
-    this._ycontent = this._ydoc.getMap('content');
+    this._yroot = this._ydoc.getMap('root');
   }
 
   get ydoc(): Y.Doc {
     return this._ydoc;
   }
 
-  private _newDirContent(): Y.Map<any> {
-    return new Y.Map([['content', new Y.Map()]]);
-  }
-
-  private _newFileContent(): Y.Map<any> {
-    return new Y.Map([['content', null]]);
+  private _newDir(): Y.Map<any> {
+    return new Y.Map();
   }
 
   isDir(path: string): boolean {
-    if (path === '') {
-      return true;
-    }
-    if (this.getContent(path) instanceof Y.Map) {
-      return true;
-    }
-    return false;
+    return this.get(path) ? true : false;
   }
 
-  getContent(path: string): Y.Map<any> {
+  get(path: string): Y.Map<any> | null {
     if (path === '') {
-      return this._ycontent;
+      return this._yroot;
     }
-    var currentContent = this._ycontent;
+    var current = this._yroot;
     const parts = new Path(path).parts;
     var cwd = '';
     const lastIdx = parts.length - 1;
     for (var idx = 0; idx < parts.length; idx++) {
       const part = parts[idx];
-      if (!currentContent.has(part)) {
+      if (!current.has(part)) {
         throw new Error(`No entry "${part}" in "${cwd}"`);
       }
-      currentContent = currentContent.get(part).get('content');
-      if (currentContent instanceof Y.Map) {
+      current = current.get(part);
+      if (current) {
         cwd = cwd === '' ? part : `${cwd}/${part}`;
       } else if (idx < lastIdx) {
         throw new Error(`Entry "${part}" in "${cwd}" is not a directory.`);
       }
     }
-    return currentContent;
+    return current;
   }
 
   newUntitled(isDir: boolean, path?: string, ext?: string): string {
@@ -62,10 +52,10 @@ export class YDrive {
     ext = ext ?? '';
     let idx = 0;
     let newName = '';
-    const parentContent = this.getContent(path);
-    const dir = parentContent.toJSON();
+    const parent = this.get(path)!;
+    const dir = parent.toJSON();
     while (newName === '') {
-      const _newName: string = `untitled${idx}${ext}`;
+      const _newName: string = `shared${idx}${ext}`;
       if (_newName in dir) {
         idx += 1;
       } else {
@@ -84,13 +74,13 @@ export class YDrive {
   }
 
   createFile(path: string) {
-    const parentContent = this.getContent(new Path(path).parent);
-    parentContent.set(new Path(path).name, this._newFileContent());
+    const parent = this.get(new Path(path).parent)!;
+    parent.set(new Path(path).name, null);
   }
 
   createDirectory(path: string) {
-    const parentContent = this.getContent(new Path(path).parent);
-    parentContent.set(new Path(path).name, this._newDirContent());
+    const parent = this.get(new Path(path).parent)!;
+    parent.set(new Path(path).name, this._newDir());
   }
 
   delete(path: string) {
@@ -98,8 +88,8 @@ export class YDrive {
     if (parts.length === 0) {
       throw new Error('Cannot delete root directory');
     }
-    const parentContent = this.getContent(new Path(path).parent);
-    parentContent.delete(new Path(path).name);
+    const parent = this.get(new Path(path).parent)!;
+    parent.delete(new Path(path).name);
   }
 
   move(fromPath: string, toPath: string) {
@@ -109,14 +99,14 @@ export class YDrive {
     if (new Path(toPath).parts.length === 0) {
       throw new Error('Cannot move to root directory');
     }
-    const fromParentContent = this.getContent(new Path(fromPath).parent);
-    const toParentContent = this.getContent(new Path(toPath).parent);
-    const content = fromParentContent.get(new Path(fromPath).name).clone();
+    const fromParent = this.get(new Path(fromPath).parent)!;
+    const toParent = this.get(new Path(toPath).parent)!;
+    const content = fromParent.get(new Path(fromPath).name).clone();
     this.delete(fromPath);
-    toParentContent.set(new Path(toPath).name, content);
+    toParent.set(new Path(toPath).name, content);
   }
 
   private _ydoc: Y.Doc;
-  private _ycontent: Y.Map<any>;
+  private _yroot: Y.Map<any>;
 }
 

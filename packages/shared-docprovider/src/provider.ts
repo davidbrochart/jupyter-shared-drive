@@ -105,7 +105,7 @@ export class WebrtcProvider implements IDocumentProvider {
 
   private _onPeers = (event: any): void => {
     if (event.webrtcPeers.length === 0) {
-      showErrorMessage(this._trans.__('All clients disconnected'), 'If you close this window, all data will be lost (unless someone reconnects).', [
+      showErrorMessage(this._trans.__('All clients disconnected'), `If you close '${this._path}', all data will be lost (unless someone reconnects).`, [
         Dialog.okButton()
       ]);
     }
