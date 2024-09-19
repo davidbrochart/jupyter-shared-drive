@@ -16,10 +16,10 @@ import { WebrtcProvider } from './provider';
 import { Path } from './path';
 import { YDrive } from './ydrive';
 import {
-  ISharedDrive,
+  ICollaborativeDrive,
   ISharedModelFactory,
   SharedDocumentFactory
-} from './tokens';
+} from '@jupyter/docprovider';
 import { Awareness } from 'y-protocols/awareness';
 
 const signalingServers = JSON.parse(PageConfig.getOption('signalingServers'));
@@ -27,7 +27,7 @@ const signalingServers = JSON.parse(PageConfig.getOption('signalingServers'));
 /**
  * A collaborative implementation for an `IDrive`, talking to other peers using WebRTC.
  */
-export class SharedDrive implements ISharedDrive {
+export class SharedDrive implements ICollaborativeDrive {
   /**
    * Construct a new drive object.
    *
@@ -75,6 +75,15 @@ export class SharedDrive implements ISharedDrive {
       }
     );
     this._fileSystemProvider.on('synced', this._onSync);
+  }
+
+  //get providers(): Map<string, WebrtcProvider> {
+  get providers(): Map<string, any> {  // FIXME
+    const providers = new Map();
+    for (var key in this._fileProviders) {
+      providers.set(key, this._fileProviders.get(key)!.provider);
+    }
+    return providers;
   }
 
   private _onSync = (synced: any) => {
@@ -314,7 +323,7 @@ export class SharedDrive implements ISharedDrive {
     options: Contents.ISharedFactoryOptions
   ): YDocument<DocumentChange> => {
     if (typeof options.format !== 'string') {
-      const factory = this.sharedModelFactory.documentFactories.get(options.contentType)!;
+      const factory = (this.sharedModelFactory as SharedModelFactory).documentFactories.get(options.contentType)!;
       const sharedModel = factory(options);
       return sharedModel;
     }
@@ -330,7 +339,7 @@ export class SharedDrive implements ISharedDrive {
       return fileProvider.sharedModel;
     }
 
-    const factory = this.sharedModelFactory.documentFactories.get(options.contentType)!;
+    const factory = (this.sharedModelFactory as SharedModelFactory).documentFactories.get(options.contentType)!;
     const sharedModel = factory(options);
 
     const provider = new WebrtcProvider({
