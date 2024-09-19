@@ -55,7 +55,7 @@ export class YDrive {
     const parent = this.get(path)!;
     const dir = parent.toJSON();
     while (newName === '') {
-      const _newName = `shared${idx}${ext}`;
+      const _newName: string = `shared${idx}${ext}`;
       if (_newName in dir) {
         idx += 1;
       } else {
