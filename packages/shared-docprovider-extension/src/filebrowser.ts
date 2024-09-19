@@ -59,7 +59,7 @@ export const drive: JupyterFrontEndPlugin<ICollaborativeDrive> = {
  * Plugin to register the shared model factory for the content type 'file'.
  */
 export const yfile: JupyterFrontEndPlugin<void> = {
-  id: '@jupyter/docprovider-extension:yfile',
+  id: '@jupyter/shared-docprovider-extension:yfile',
   description:
     "Plugin to register the shared model factory for the content type 'file'",
   autoStart: true,
@@ -77,7 +77,7 @@ export const yfile: JupyterFrontEndPlugin<void> = {
  * Plugin to register the shared model factory for the content type 'notebook'.
  */
 export const ynotebook: JupyterFrontEndPlugin<void> = {
-  id: '@jupyter/docprovider-extension:ynotebook',
+  id: '@jupyter/shared-docprovider-extension:ynotebook',
   description:
     "Plugin to register the shared model factory for the content type 'notebook'",
   autoStart: true,
@@ -126,7 +126,7 @@ export const ynotebook: JupyterFrontEndPlugin<void> = {
  * The shared file browser factory provider.
  */
 export const sharedFileBrowser: JupyterFrontEndPlugin<void> = {
-  id: 'jupyterlab-shared-contents:sharedFileBrowser',
+  id: 'jupyter-shared-drive:sharedFileBrowser',
   description: 'The shared file browser factory provider',
   autoStart: true,
   requires: [ICollaborativeDrive, IFileBrowserFactory],
