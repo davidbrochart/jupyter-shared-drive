@@ -130,12 +130,7 @@ export const sharedFileBrowser: JupyterFrontEndPlugin<void> = {
   description: 'The shared file browser factory provider',
   autoStart: true,
   requires: [ICollaborativeDrive, IFileBrowserFactory],
-  optional: [
-    IRouter,
-    JupyterFrontEnd.ITreeResolver,
-    ILabShell,
-    ITranslator
-  ],
+  optional: [IRouter, JupyterFrontEnd.ITreeResolver, ILabShell, ITranslator],
   activate: async (
     app: JupyterFrontEnd,
     drive: ICollaborativeDrive,
@@ -161,7 +156,7 @@ export const sharedFileBrowser: JupyterFrontEndPlugin<void> = {
     const importButton = new ToolbarButton({
       icon: fileIcon,
       onClick: async () => {
-        let path = prompt('Please enter the path of the file to import:');
+        const path = prompt('Please enter the path of the file to import:');
         if (path !== null) {
           await (drive as SharedDrive).importFile(path);
         }

@@ -28,11 +28,11 @@ export class YDrive {
     if (path === '') {
       return this._yroot;
     }
-    var current = this._yroot;
+    let current = this._yroot;
     const parts = new Path(path).parts;
-    var cwd = '';
+    let cwd = '';
     const lastIdx = parts.length - 1;
-    for (var idx = 0; idx < parts.length; idx++) {
+    for (let idx = 0; idx < parts.length; idx++) {
       const part = parts[idx];
       if (!current.has(part)) {
         throw new Error(`No entry "${part}" in "${cwd}"`);
@@ -55,7 +55,7 @@ export class YDrive {
     const parent = this.get(path)!;
     const dir = parent.toJSON();
     while (newName === '') {
-      const _newName: string = `shared${idx}${ext}`;
+      const _newName = `shared${idx}${ext}`;
       if (_newName in dir) {
         idx += 1;
       } else {
@@ -109,4 +109,3 @@ export class YDrive {
   private _ydoc: Y.Doc;
   private _yroot: Y.Map<any>;
 }
-

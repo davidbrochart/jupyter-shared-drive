@@ -8,7 +8,14 @@ import { PageConfig, URLExt } from '@jupyterlab/coreutils';
 import { TranslationBundle } from '@jupyterlab/translation';
 import { Contents, User } from '@jupyterlab/services';
 
-import { DocumentChange, ISharedDocument, ISharedFile, ISharedNotebook, YDocument, YNotebook } from '@jupyter/ydoc';
+import {
+  DocumentChange,
+  ISharedDocument,
+  ISharedFile,
+  ISharedNotebook,
+  YDocument,
+  YNotebook
+} from '@jupyter/ydoc';
 
 import { IDefaultFileBrowser } from '@jupyterlab/filebrowser';
 import { ServerConnection } from '@jupyterlab/services';
@@ -78,9 +85,10 @@ export class SharedDrive implements ICollaborativeDrive {
   }
 
   //get providers(): Map<string, WebrtcProvider> {
-  get providers(): Map<string, any> {  // FIXME
+  get providers(): Map<string, any> {
+    // FIXME
     const providers = new Map();
-    for (var key in this._fileProviders) {
+    for (const key in this._fileProviders) {
       providers.set(key, this._fileProviders.get(key)!.provider);
     }
     return providers;
@@ -101,15 +109,16 @@ export class SharedDrive implements ICollaborativeDrive {
     this._ydrive.delete(localPath);
   }
 
-  async restoreCheckpoint(path: string, checkpointID: string): Promise<void> {
-  }
+  async restoreCheckpoint(path: string, checkpointID: string): Promise<void> {}
 
-  async deleteCheckpoint(path: string, checkpointID: string): Promise<void> {
-  }
+  async deleteCheckpoint(path: string, checkpointID: string): Promise<void> {}
 
   async importFile(path: string) {
-    const model = await this._defaultFileBrowser.model.manager.services.contents.get(path, {content: true});
-    this._ydrive.createFile(model.name);  // FIXME: create file in cwd?
+    const model =
+      await this._defaultFileBrowser.model.manager.services.contents.get(path, {
+        content: true
+      });
+    this._ydrive.createFile(model.name); // FIXME: create file in cwd?
     const sharedModel = this.sharedModelFactory.createNew({
       path: model.name,
       format: model.format,
@@ -253,15 +262,15 @@ export class SharedDrive implements ICollaborativeDrive {
     if (!this._ydrive.isDir(localPath)) {
       // It's a file.
       return {
-         name: new Path(localPath).name,
-         path: localPath,
-         type: 'file',
-         writable: true,
-         created: '',
-         last_modified: '',
-         mimetype: '',
-         content: null,
-         format: null
+        name: new Path(localPath).name,
+        path: localPath,
+        type: 'file',
+        writable: true,
+        created: '',
+        last_modified: '',
+        mimetype: '',
+        content: null,
+        format: null
       };
     }
 
@@ -323,7 +332,9 @@ export class SharedDrive implements ICollaborativeDrive {
     options: Contents.ISharedFactoryOptions
   ): YDocument<DocumentChange> => {
     if (typeof options.format !== 'string') {
-      const factory = (this.sharedModelFactory as SharedModelFactory).documentFactories.get(options.contentType)!;
+      const factory = (
+        this.sharedModelFactory as SharedModelFactory
+      ).documentFactories.get(options.contentType)!;
       const sharedModel = factory(options);
       return sharedModel;
     }
@@ -339,7 +350,9 @@ export class SharedDrive implements ICollaborativeDrive {
       return fileProvider.sharedModel;
     }
 
-    const factory = (this.sharedModelFactory as SharedModelFactory).documentFactories.get(options.contentType)!;
+    const factory = (
+      this.sharedModelFactory as SharedModelFactory
+    ).documentFactories.get(options.contentType)!;
     const sharedModel = factory(options);
 
     const provider = new WebrtcProvider({

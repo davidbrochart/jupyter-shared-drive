@@ -4,7 +4,7 @@
  */
 
 export class Path {
-  constructor (path: string) {
+  constructor(path: string) {
     this._parts = path.split('/');
     if (this._parts[this._parts.length - 1] === '') {
       this._parts.pop();
@@ -16,9 +16,9 @@ export class Path {
   }
 
   get parent(): string {
-    return this._parts.slice(0, this._parts.length - 1).join('/')
+    return this._parts.slice(0, this._parts.length - 1).join('/');
   }
-  
+
   get name(): string {
     return this._parts[this._parts.length - 1];
   }
