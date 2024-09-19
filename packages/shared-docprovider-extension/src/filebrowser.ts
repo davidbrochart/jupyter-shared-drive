@@ -3,8 +3,7 @@
  * Distributed under the terms of the Modified BSD License.
  */
 
-import { listIcon, refreshIcon } from '@jupyterlab/ui-components';
-//import { listIcon, fileIcon, refreshIcon } from '@jupyterlab/ui-components';
+import { fileIcon, listIcon, refreshIcon } from '@jupyterlab/ui-components';
 import {
   ILabShell,
   IRouter,
@@ -17,35 +16,39 @@ import {
   IFileBrowserFactory
 } from '@jupyterlab/filebrowser';
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
-import { ITranslator } from '@jupyterlab/translation';
+import { ITranslator, nullTranslator } from '@jupyterlab/translation';
 
 import { YFile, YNotebook } from '@jupyter/ydoc';
 
-import { IGlobalAwareness } from '@jupyter/shared-drive';
-import { ISharedDrive, SharedDrive } from '@jupyter/shared-docprovider';
-import { Awareness } from 'y-protocols/awareness';
+//import { ICollaborativeDrive, IGlobalAwareness } from '@jupyter/docprovider';
+import { ICollaborativeDrive } from '@jupyter/docprovider';
+import { SharedDrive } from '@jupyter/shared-docprovider';
+//import { Awareness } from 'y-protocols/awareness';
 
 /**
  * The shared drive provider.
  */
-export const drive: JupyterFrontEndPlugin<ISharedDrive> = {
+export const drive: JupyterFrontEndPlugin<ICollaborativeDrive> = {
   id: '@jupyter/docprovider-extension:drive',
   description: 'The default collaborative drive provider',
-  provides: ISharedDrive,
-  requires: [IDefaultFileBrowser, ITranslator],
-  optional: [IGlobalAwareness],
+  provides: ICollaborativeDrive,
+  requires: [IDefaultFileBrowser],
+  //optional: [IGlobalAwareness, ITranslator],
+  optional: [ITranslator],
   activate: (
     app: JupyterFrontEnd,
     defaultFileBrowser: IDefaultFileBrowser,
-    translator: ITranslator,
-    globalAwareness: Awareness | null
-  ): ISharedDrive => {
+    //globalAwareness: Awareness | null,
+    translator: ITranslator | null
+  ): ICollaborativeDrive => {
+    translator = translator ?? nullTranslator;
     const trans = translator.load('jupyter-shared-drive');
     const drive = new SharedDrive(
       app.serviceManager.user,
       defaultFileBrowser,
       trans,
-      globalAwareness,
+      //globalAwareness,
+      null,
       'Shared'
     );
     return drive;
@@ -60,9 +63,9 @@ export const yfile: JupyterFrontEndPlugin<void> = {
   description:
     "Plugin to register the shared model factory for the content type 'file'",
   autoStart: true,
-  requires: [ISharedDrive],
+  requires: [ICollaborativeDrive],
   optional: [],
-  activate: (app: JupyterFrontEnd, drive: ISharedDrive): void => {
+  activate: (app: JupyterFrontEnd, drive: ICollaborativeDrive): void => {
     const yFileFactory = () => {
       return new YFile();
     };
@@ -78,11 +81,11 @@ export const ynotebook: JupyterFrontEndPlugin<void> = {
   description:
     "Plugin to register the shared model factory for the content type 'notebook'",
   autoStart: true,
-  requires: [ISharedDrive],
+  requires: [ICollaborativeDrive],
   optional: [ISettingRegistry],
   activate: (
     app: JupyterFrontEnd,
-    drive: ISharedDrive,
+    drive: ICollaborativeDrive,
     settingRegistry: ISettingRegistry | null
   ): void => {
     let disableDocumentWideUndoRedo = true;
@@ -126,25 +129,20 @@ export const sharedFileBrowser: JupyterFrontEndPlugin<void> = {
   id: 'jupyterlab-shared-contents:sharedFileBrowser',
   description: 'The shared file browser factory provider',
   autoStart: true,
-  requires: [ISharedDrive, IFileBrowserFactory],
-  optional: [
-    IRouter,
-    JupyterFrontEnd.ITreeResolver,
-    ILabShell,
-    ISettingRegistry,
-    ITranslator
-  ],
+  requires: [ICollaborativeDrive, IFileBrowserFactory],
+  optional: [IRouter, JupyterFrontEnd.ITreeResolver, ILabShell, ITranslator],
   activate: async (
     app: JupyterFrontEnd,
-    drive: ISharedDrive,
+    drive: ICollaborativeDrive,
     fileBrowserFactory: IFileBrowserFactory,
     router: IRouter | null,
     tree: JupyterFrontEnd.ITreeResolver | null,
     labShell: ILabShell | null,
-    translator: ITranslator
+    translator: ITranslator | null
   ): Promise<void> => {
     const { createFileBrowser } = fileBrowserFactory;
-    //const trans = (translator ?? nullTranslator).load('jupyterlab-shared-contents');
+    translator = translator ?? nullTranslator;
+    const trans = translator.load('jupyter-shared-drive');
     app.serviceManager.contents.addDrive(drive);
 
     const widget = createFileBrowser('jp-shared-contents-browser', {
@@ -152,20 +150,19 @@ export const sharedFileBrowser: JupyterFrontEndPlugin<void> = {
       // We don't want to restore old state, we don't have a drive handle ready
       restore: false
     });
-    //widget.title.caption = trans.__('Shared Contents');
-    widget.title.caption = 'Shared Contents';
+    widget.title.caption = trans.__('Shared Drive');
     widget.title.icon = listIcon;
 
-    //const importButton = new ToolbarButton({
-    //  icon: fileIcon,
-    //  onClick: async () => {
-    //    let path = prompt('Please enter the path of the file to import:');
-    //    if (path !== null) {
-    //      await drive.importFile(path);
-    //    }
-    //  },
-    //  tooltip: 'Import File'
-    //});
+    const importButton = new ToolbarButton({
+      icon: fileIcon,
+      onClick: async () => {
+        const path = prompt('Please enter the path of the file to import:');
+        if (path !== null) {
+          await (drive as SharedDrive).importFile(path);
+        }
+      },
+      tooltip: 'Import File'
+    });
 
     const refreshButton = new ToolbarButton({
       icon: refreshIcon,
@@ -176,7 +173,7 @@ export const sharedFileBrowser: JupyterFrontEndPlugin<void> = {
     });
 
     widget.toolbar.insertItem(0, 'refresh', refreshButton);
-    //widget.toolbar.insertItem(1, 'import', importButton);
+    widget.toolbar.insertItem(1, 'import', importButton);
 
     app.shell.add(widget, 'left');
   }

@@ -53,9 +53,10 @@
     "watch:labextension": "jupyter labextension watch ."
   },
   "dependencies": {
+    "@jupyter/docprovider": "^2.0.0 || ^3.0.0-beta.6",
     "@jupyter/shared-docprovider": "^0.1.0",
     "@jupyter/shared-drive": "^0.1.0",
-    "@jupyter/ydoc": "^2.0.0",
+    "@jupyter/ydoc": "^2.0.0 || ^3.0.0-a3",
     "@jupyterlab/application": "^4.2.0",
     "@jupyterlab/apputils": "^4.2.0",
     "@jupyterlab/docregistry": "^4.2.0",
@@ -89,6 +90,9 @@
   "jupyterlab": {
     "extension": true,
     "outputDir": "../../projects/jupyter-shared-docprovider/jupyter_shared_docprovider/labextension",
+    "disabledExtensions": [
+      "@jupyter/docprovider-extension:defaultFileBrowser"
+    ],
     "sharedPackages": {
       "@codemirror/state": {
         "bundled": false,

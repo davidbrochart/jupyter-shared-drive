@@ -1,10 +1,12 @@
+# Copyright (c) Jupyter Development Team.
+# Distributed under the terms of the Modified BSD License.
+
 import asyncio
 import json
 
 from jupyter_server.base.handlers import JupyterHandler
 from tornado import web
-from tornado.websocket import WebSocketClosedError, WebSocketHandler
-
+from tornado.websocket import WebSocketHandler
 
 clients = set()
 
@@ -50,14 +52,14 @@ class SignalingWebSocketHandler(WebSocketHandler, JupyterHandler):
             subs = self._topics.get(topic_name, set())
             if self in subs:
                 subs.remove(self)
-            if (len(subs) == 0):
+            if len(subs) == 0:
                 del self._topics[topic_name]
         self._subscribed_topics.clear()
         self._closed = True
 
     async def on_message(self, message):
         message = json.loads(message)
-        if ("type" in message and not self._closed):
+        if "type" in message and not self._closed:
             message_type = message["type"]
             if message_type == "subscribe":
                 for topic_name in message["topics"]:

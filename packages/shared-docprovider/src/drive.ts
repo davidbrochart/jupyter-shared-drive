@@ -3,43 +3,38 @@
 
 import { PromiseDelegate } from '@lumino/coreutils';
 import { WebrtcProvider as YWebrtcProvider } from 'y-webrtc';
-import * as Y from 'yjs';
 import { ISignal, Signal } from '@lumino/signaling';
 import { PageConfig, URLExt } from '@jupyterlab/coreutils';
 import { TranslationBundle } from '@jupyterlab/translation';
 import { Contents, User } from '@jupyterlab/services';
 
-import { DocumentChange, ISharedDocument, YDocument } from '@jupyter/ydoc';
+import {
+  DocumentChange,
+  ISharedDocument,
+  ISharedFile,
+  ISharedNotebook,
+  YDocument,
+  YNotebook
+} from '@jupyter/ydoc';
 
 import { IDefaultFileBrowser } from '@jupyterlab/filebrowser';
-//import { ServerConnection } from './serverconnection';
 import { ServerConnection } from '@jupyterlab/services';
 import { WebrtcProvider } from './provider';
+import { Path } from './path';
+import { YDrive } from './ydrive';
 import {
-  ISharedDrive,
+  ICollaborativeDrive,
   ISharedModelFactory,
   SharedDocumentFactory
-} from './tokens';
+} from '@jupyter/docprovider';
 import { Awareness } from 'y-protocols/awareness';
 
 const signalingServers = JSON.parse(PageConfig.getOption('signalingServers'));
 
-const MODEL = {
-  name: '',
-  path: '',
-  type: '',
-  writable: true,
-  created: '',
-  last_modified: '',
-  mimetype: '',
-  content: '',
-  format: null
-};
-
 /**
  * A collaborative implementation for an `IDrive`, talking to other peers using WebRTC.
  */
-export class SharedDrive implements ISharedDrive {
+export class SharedDrive implements ICollaborativeDrive {
   /**
    * Construct a new drive object.
    *
@@ -53,16 +48,21 @@ export class SharedDrive implements ISharedDrive {
     name: string
   ) {
     this._user = user;
-    //this._defaultFileBrowser = defaultFileBrowser;
+    this._defaultFileBrowser = defaultFileBrowser;
     this._trans = translator;
     this._globalAwareness = globalAwareness;
     //this._username = this._globalAwareness?.getLocalState()?.user.identity.name;
     //this._username = this._globalAwareness?.getLocalState()?.username;
-    this._fileProviders = new Map<string, WebrtcProvider>();
+    this._fileProviders = new Map<string, IFileProvider>();
     this.sharedModelFactory = new SharedModelFactory(this._onCreate);
     this.serverSettings = ServerConnection.makeSettings();
     signalingServers.forEach((url: string) => {
-      if (url.startsWith('ws://') || url.startsWith('wss://') || url.startsWith('http://') || url.startsWith('https://')) {
+      if (
+        url.startsWith('ws://') ||
+        url.startsWith('wss://') ||
+        url.startsWith('http://') ||
+        url.startsWith('https://')
+      ) {
         // It's an absolute URL, keep it as-is.
         this._signalingServers.push(url);
       } else {
@@ -73,17 +73,25 @@ export class SharedDrive implements ISharedDrive {
       }
     });
     this.name = name;
-    this._fileSystemYdoc = new Y.Doc();
-    this._fileSystemContent = this._fileSystemYdoc.getMap('content');
     this._fileSystemProvider = new YWebrtcProvider(
       'fileSystem',
-      this._fileSystemYdoc,
+      this._ydrive.ydoc,
       {
         signaling: this._signalingServers,
         awareness: this._globalAwareness || undefined
       }
     );
     this._fileSystemProvider.on('synced', this._onSync);
+  }
+
+  //get providers(): Map<string, WebrtcProvider> {
+  get providers(): Map<string, any> {
+    // FIXME
+    const providers = new Map();
+    for (const key in this._fileProviders) {
+      providers.set(key, this._fileProviders.get(key)!.provider);
+    }
+    return providers;
   }
 
   private _onSync = (synced: any) => {
@@ -93,65 +101,59 @@ export class SharedDrive implements ISharedDrive {
     }
   };
 
-  getDownloadUrl(path: string): Promise<string> {
-    return new Promise(resolve => {
-      resolve('');
-    });
-  }
-  delete(path: string): Promise<void> {
-    return new Promise(resolve => {
-      resolve();
-    });
-  }
-  restoreCheckpoint(path: string, checkpointID: string): Promise<void> {
-    return new Promise(resolve => {
-      resolve();
-    });
-  }
-  deleteCheckpoint(path: string, checkpointID: string): Promise<void> {
-    return new Promise(resolve => {
-      resolve();
-    });
+  async getDownloadUrl(path: string): Promise<string> {
+    return '';
   }
 
-  //async importFile(path: string) {
-  //  const model = await this._defaultFileBrowser.model.manager.services.contents.get(path, {content: true});
-  //  const ymap = new Y.Map();
-  //  const ytext = new Y.Text();
-  //  this._fileSystemContent.set(model.name, ymap);
-  //  ymap.set('init', new Y.Map());
-  //  ymap.set('content', ytext);
-  //  ytext.insert(0, model.content);
-  //}
+  async delete(localPath: string): Promise<void> {
+    this._ydrive.delete(localPath);
+  }
+
+  async restoreCheckpoint(path: string, checkpointID: string): Promise<void> {}
+
+  async deleteCheckpoint(path: string, checkpointID: string): Promise<void> {}
+
+  async importFile(path: string) {
+    const model =
+      await this._defaultFileBrowser.model.manager.services.contents.get(path, {
+        content: true
+      });
+    this._ydrive.createFile(model.name); // FIXME: create file in cwd?
+    const sharedModel = this.sharedModelFactory.createNew({
+      path: model.name,
+      format: model.format,
+      contentType: model.type,
+      collaborative: true
+    });
+    if (sharedModel) {
+      // FIXME: replace with sharedModel.source=model.content
+      // when https://github.com/jupyter-server/jupyter_ydoc/pull/273 is merged
+      if (sharedModel instanceof YNotebook) {
+        (sharedModel as ISharedNotebook).fromJSON(model.content);
+      } else {
+        (sharedModel as ISharedFile).setSource(model.content);
+      }
+    }
+  }
 
   async newUntitled(
     options: Contents.ICreateOptions = {}
   ): Promise<Contents.IModel> {
+    let ext = '';
+    let isDir = false;
     if (options.type === 'directory') {
-      throw new Error('Cannot create directory');
-    }
-
-    let ext: string;
-    if (options.type === 'notebook') {
-      ext = 'ipynb';
+      isDir = true;
+    } else if (options.type === 'notebook') {
+      ext = '.ipynb';
     } else {
-      ext = 'txt';
+      ext = '.txt';
     }
-    let idx = 0;
-    let newName = '';
-    const fileSystemContent = this._fileSystemContent.toJSON();
-    while (newName === '') {
-      const _newName = `untitled${idx}.${ext}`;
-      if (_newName in fileSystemContent) {
-        idx += 1;
-      } else {
-        newName = _newName;
-      }
-    }
+    const newPath = this._ydrive.newUntitled(isDir, options.path, ext);
+    const newName = new Path(newPath).name;
     const model = {
       name: newName,
-      path: newName,
-      type: 'file',
+      path: newPath,
+      type: options.type ?? 'file',
       writable: true,
       created: '',
       last_modified: '',
@@ -159,8 +161,6 @@ export class SharedDrive implements ISharedDrive {
       content: null,
       format: null
     };
-    const ymap = new Y.Map();
-    this._fileSystemContent.set(newName, ymap);
 
     this._fileChanged.emit({
       type: 'new',
@@ -171,16 +171,9 @@ export class SharedDrive implements ISharedDrive {
   }
 
   async rename(path: string, newPath: string): Promise<Contents.IModel> {
-    const fileSystemContent = this._fileSystemContent.toJSON();
-    if (path in fileSystemContent) {
-      this._fileSystemContent.delete(path);
-    }
-    if (!(newPath in fileSystemContent)) {
-      const ymap = new Y.Map();
-      this._fileSystemContent.set(newPath, ymap);
-    }
+    this._ydrive.move(path, newPath);
     const model = {
-      name: newPath,
+      name: new Path(newPath).name,
       path: newPath,
       type: 'file',
       writable: true,
@@ -192,24 +185,20 @@ export class SharedDrive implements ISharedDrive {
     };
     return model;
   }
-  copy(path: string, toDir: string): Promise<Contents.IModel> {
-    return new Promise(resolve => {
-      resolve(MODEL);
-    });
+
+  async copy(path: string, toDir: string): Promise<Contents.IModel> {
+    throw new Error('Copy/paste not supported');
   }
-  createCheckpoint(path: string): Promise<Contents.ICheckpointModel> {
-    const model = {
+
+  async createCheckpoint(path: string): Promise<Contents.ICheckpointModel> {
+    return {
       id: '',
       last_modified: ''
     };
-    return new Promise(resolve => {
-      resolve(model);
-    });
   }
-  listCheckpoints(path: string): Promise<Contents.ICheckpointModel[]> {
-    return new Promise(resolve => {
-      resolve([]);
-    });
+
+  async listCheckpoints(path: string): Promise<Contents.ICheckpointModel[]> {
+    return [];
   }
 
   /**
@@ -249,7 +238,7 @@ export class SharedDrive implements ISharedDrive {
     if (this.isDisposed) {
       return;
     }
-    this._fileProviders.forEach(p => p.dispose());
+    this._fileProviders.forEach(fp => fp.provider.dispose());
     this._fileProviders.clear();
     this._isDisposed = true;
     Signal.clearData(this);
@@ -263,8 +252,6 @@ export class SharedDrive implements ISharedDrive {
    * @param options: The options used to fetch the file.
    *
    * @returns A promise which resolves with the file content.
-   *
-   * Uses the [Jupyter Notebook API](http://petstore.swagger.io/?url=https://raw.githubusercontent.com/jupyter/notebook/master/notebook/services/api/api.yaml#!/contents) and validates the response model.
    */
   async get(
     localPath: string,
@@ -272,61 +259,10 @@ export class SharedDrive implements ISharedDrive {
   ): Promise<Contents.IModel> {
     let model: Contents.IModel;
     await this._ready;
-    if (options && options.format && options.type) {
-      // it's a file
-      const key = `${options.format}:${options.type}:${localPath}`;
-      const provider = this._fileProviders.get(key);
-
-      if (provider) {
-        //await provider.ready;
-        model = {
-          name: localPath,
-          path: localPath,
-          type: 'file',
-          writable: true,
-          created: '',
-          last_modified: '',
-          mimetype: '',
-          content: null,
-          format: null
-        };
-        return new Promise(resolve => {
-          resolve(model);
-        });
-      }
-    }
-
-    // it's a directory
-    const content: any[] = [];
-    if (localPath === '') {
-      // root directory
-      this._fileSystemContent.forEach((value: any, key: string) => {
-        content.push({
-          name: key,
-          path: key,
-          type: 'file',
-          writable: true,
-          created: '',
-          last_modified: '',
-          mimetype: '',
-          content: null,
-          format: null
-        });
-      });
-      model = {
-        name: '',
-        path: '',
-        type: 'directory',
-        writable: false,
-        created: '',
-        last_modified: '',
-        mimetype: '',
-        content,
-        format: null
-      };
-    } else {
-      model = {
-        name: localPath,
+    if (!this._ydrive.isDir(localPath)) {
+      // It's a file.
+      return {
+        name: new Path(localPath).name,
         path: localPath,
         type: 'file',
         writable: true,
@@ -337,9 +273,37 @@ export class SharedDrive implements ISharedDrive {
         format: null
       };
     }
-    return new Promise(resolve => {
-      resolve(model);
-    });
+
+    // It's a directory.
+    const content: any[] = [];
+    const dirContent = this._ydrive.get(localPath)!;
+    for (const [key, value] of dirContent) {
+      const isDir = value !== null;
+      const type = isDir ? 'directory' : 'file';
+      content.push({
+        name: key,
+        path: `${localPath}/${key}`,
+        type,
+        writable: true,
+        created: '',
+        last_modified: '',
+        mimetype: '',
+        content: null,
+        format: null
+      });
+    }
+    model = {
+      name: new Path(localPath).name,
+      path: localPath,
+      type: 'directory',
+      writable: true,
+      created: '',
+      last_modified: '',
+      mimetype: '',
+      content,
+      format: null
+    };
+    return model;
   }
 
   /**
@@ -356,42 +320,40 @@ export class SharedDrive implements ISharedDrive {
     localPath: string,
     options: Partial<Contents.IModel> = {}
   ): Promise<Contents.IModel> {
-    // Check that there is a provider - it won't e.g. if the document model is not collaborative.
-    if (options.format && options.type) {
-      const key = `${options.format}:${options.type}:${localPath}`;
-      const provider = this._fileProviders.get(key);
-
-      if (provider) {
-        // Save is done from the backend
-        const fetchOptions: Contents.IFetchOptions = {
-          type: options.type,
-          format: options.format,
-          content: false
-        };
-        return this.get(localPath, fetchOptions);
-      }
-    }
-
-    return new Promise(resolve => {
-      resolve(MODEL);
-    });
-    //return super.save(localPath, options);
+    const fetchOptions: Contents.IFetchOptions = {
+      type: options.type,
+      format: options.format,
+      content: false
+    };
+    return this.get(localPath, fetchOptions);
   }
 
   private _onCreate = (
-    options: Contents.ISharedFactoryOptions,
-    sharedModel: YDocument<DocumentChange>
-  ) => {
+    options: Contents.ISharedFactoryOptions
+  ): YDocument<DocumentChange> => {
     if (typeof options.format !== 'string') {
-      return;
+      const factory = (
+        this.sharedModelFactory as SharedModelFactory
+      ).documentFactories.get(options.contentType)!;
+      const sharedModel = factory(options);
+      return sharedModel;
     }
 
-    const file = this._fileSystemContent.get(options.path);
-    if (file === undefined) {
-      return;
-    }
+    // Check if file exists.
+    this._ydrive.get(options.path);
 
     const key = `${options.format}:${options.contentType}:${options.path}`;
+
+    // Check if shared model alread exists.
+    const fileProvider = this._fileProviders.get(key);
+    if (fileProvider) {
+      return fileProvider.sharedModel;
+    }
+
+    const factory = (
+      this.sharedModelFactory as SharedModelFactory
+    ).documentFactories.get(options.contentType)!;
+    const sharedModel = factory(options);
 
     const provider = new WebrtcProvider({
       url: '',
@@ -404,37 +366,43 @@ export class SharedDrive implements ISharedDrive {
       signalingServers: this._signalingServers
     });
 
-    this._fileProviders.set(key, provider);
+    this._fileProviders.set(key, { provider, sharedModel });
 
     sharedModel.disposed.connect(() => {
-      const provider = this._fileProviders.get(key);
-      if (provider) {
-        provider.dispose();
+      const fileProvider = this._fileProviders.get(key);
+      if (fileProvider) {
+        fileProvider.provider.dispose();
         this._fileProviders.delete(key);
       }
     });
+
+    return sharedModel;
   };
 
   private _user: User.IManager;
   //private _username: string;
-  //private _defaultFileBrowser: IDefaultFileBrowser;
+  private _defaultFileBrowser: IDefaultFileBrowser;
   private _trans: TranslationBundle;
-  private _fileProviders: Map<string, WebrtcProvider>;
+  private _fileProviders: Map<string, IFileProvider>;
   private _globalAwareness: Awareness | null;
   private _fileChanged = new Signal<this, Contents.IChangedArgs>(this);
   private _isDisposed = false;
-  private _fileSystemYdoc: Y.Doc;
-  private _fileSystemContent: Y.Map<any>;
+  private _ydrive = new YDrive();
   private _fileSystemProvider: YWebrtcProvider;
   private _ready = new PromiseDelegate<void>();
   private _signalingServers: string[] = [];
+}
+
+interface IFileProvider {
+  provider: WebrtcProvider;
+  sharedModel: YDocument<DocumentChange>;
 }
 
 /**
  * Yjs sharedModel factory for real-time collaboration.
  */
 class SharedModelFactory implements ISharedModelFactory {
-  private _documentFactories: Map<Contents.ContentType, SharedDocumentFactory>;
+  documentFactories: Map<Contents.ContentType, SharedDocumentFactory>;
 
   /**
    * Shared model factory constructor
@@ -443,11 +411,10 @@ class SharedModelFactory implements ISharedModelFactory {
    */
   constructor(
     private _onCreate: (
-      options: Contents.ISharedFactoryOptions,
-      sharedModel: YDocument<DocumentChange>
-    ) => void
+      options: Contents.ISharedFactoryOptions
+    ) => YDocument<DocumentChange>
   ) {
-    this._documentFactories = new Map();
+    this.documentFactories = new Map();
   }
 
   /**
@@ -460,10 +427,10 @@ class SharedModelFactory implements ISharedModelFactory {
     type: Contents.ContentType,
     factory: SharedDocumentFactory
   ) {
-    if (this._documentFactories.has(type)) {
+    if (this.documentFactories.has(type)) {
       throw new Error(`The content type ${type} already exists`);
     }
-    this._documentFactories.set(type, factory);
+    this.documentFactories.set(type, factory);
   }
 
   /**
@@ -479,10 +446,8 @@ class SharedModelFactory implements ISharedModelFactory {
       return;
     }
 
-    if (this._documentFactories.has(options.contentType)) {
-      const factory = this._documentFactories.get(options.contentType)!;
-      const sharedModel = factory(options);
-      this._onCreate(options, sharedModel);
+    if (this.documentFactories.has(options.contentType)) {
+      const sharedModel = this._onCreate(options);
       return sharedModel;
     }
 

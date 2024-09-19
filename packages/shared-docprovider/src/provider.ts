@@ -3,7 +3,7 @@
 | Distributed under the terms of the Modified BSD License.
 |----------------------------------------------------------------------------*/
 
-//import { showErrorMessage, Dialog } from '@jupyterlab/apputils';
+import { showErrorMessage, Dialog } from '@jupyterlab/apputils';
 import { User } from '@jupyterlab/services';
 import { TranslationBundle } from '@jupyterlab/translation';
 
@@ -27,16 +27,13 @@ export interface IDocumentProvider extends IDisposable {
 }
 
 /**
- * A class to provide Yjs synchronization over WebSocket.
- *
- * We specify custom messages that the server can interpret. For reference please look in yjs_ws_server.
- *
+ * A class to provide Yjs synchronization over WebRTC.
  */
 export class WebrtcProvider implements IDocumentProvider {
   /**
-   * Construct a new WebSocketProvider
+   * Construct a new WebrtcProvider
    *
-   * @param options The instantiation options for a WebSocketProvider
+   * @param options The instantiation options for a WebrtcProvider
    */
   constructor(options: WebrtcProvider.IOptions) {
     this._isDisposed = false;
@@ -46,7 +43,7 @@ export class WebrtcProvider implements IDocumentProvider {
     this._sharedModel = options.model;
     this._awareness = options.model.awareness;
     this._yWebrtcProvider = null;
-    //this._trans = options.translator;
+    this._trans = options.translator;
     this._signalingServers = options.signalingServers;
 
     const user = options.user;
@@ -83,7 +80,6 @@ export class WebrtcProvider implements IDocumentProvider {
       return;
     }
     this._isDisposed = true;
-    //this._yWebrtcProvider?.off('connection-close', this._onConnectionClosed);
     //this._yWebrtcProvider?.off('status', this._onSync);
     this._yWebrtcProvider?.destroy();
     Signal.clearData(this);
@@ -100,26 +96,22 @@ export class WebrtcProvider implements IDocumentProvider {
     );
 
     this._yWebrtcProvider.on('synced', this._onSync);
-    //this._yWebrtcProvider.on('connection-close', this._onConnectionClosed);
+    this._yWebrtcProvider.on('peers', this._onPeers);
   }
 
   private _onUserChanged(user: User.IManager): void {
     this._awareness.setLocalStateField('user', user.identity);
   }
 
-  //private _onConnectionClosed = (event: any): void => {
-  //  if (event.code === 1003) {
-  //    console.error('Document provider closed:', event.reason);
-
-  //    showErrorMessage(this._trans.__('Document session error'), event.reason, [
-  //      Dialog.okButton()
-  //    ]);
-
-  //    // Dispose shared model immediately. Better break the document model,
-  //    // than overriding data on disk.
-  //    this._sharedModel.dispose();
-  //  }
-  //};
+  private _onPeers = (event: any): void => {
+    if (event.webrtcPeers.length === 0) {
+      showErrorMessage(
+        this._trans.__('All clients disconnected'),
+        `If you close '${this._path}', all data will be lost (unless someone reconnects).`,
+        [Dialog.okButton()]
+      );
+    }
+  };
 
   private _onSync = (synced: any) => {
     if (synced.synced) {
@@ -136,7 +128,7 @@ export class WebrtcProvider implements IDocumentProvider {
   private _ready = new PromiseDelegate<void>();
   private _sharedModel: YDocument<DocumentChange>;
   private _yWebrtcProvider: YWebrtcProvider | null;
-  //private _trans: TranslationBundle;
+  private _trans: TranslationBundle;
   private _signalingServers: string[];
 }
 
