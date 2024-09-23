@@ -1,5 +1,5 @@
 # jupyter-shared-drive
-jupyter-shared-drive==0.1.4
+jupyter-shared-drive==0.1.5
 jupyterlab~=4.2.5
 
 # Core modules (mandatory)
