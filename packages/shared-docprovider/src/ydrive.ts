@@ -101,7 +101,10 @@ export class YDrive {
     }
     const fromParent = this.get(new Path(fromPath).parent)!;
     const toParent = this.get(new Path(toPath).parent)!;
-    const content = fromParent.get(new Path(fromPath).name).clone();
+    let content = fromParent.get(new Path(fromPath).name);
+    if (content !== null) {
+      content = content.clone();
+    }
     this.delete(fromPath);
     toParent.set(new Path(toPath).name, content);
   }

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import click
 from jupyter_releaser.util import get_version, run
-from pkg_resources import parse_version  # type: ignore
+from pkg_resources import parse_version
 
 LERNA_CMD = "jlpm run lerna version --no-push --force-publish --no-git-tag-version"
 
@@ -86,8 +86,7 @@ def bump(force, skip_if_dirty, spec):
         variable, current = content[0].split(" = ")
         if variable != "__version__":
             raise ValueError(
-                f"Version file {version_file} has unexpected content;"
-                f" expected __version__ assignment in the first line, found {variable}"
+                f"Version file {version_file} has unexpected content: expected __version__ assignment in the first line, found {variable}"
             )
         current = current.strip("'\"")
         version_spec = increment_version(current, spec)

@@ -3,16 +3,15 @@
 
 import asyncio
 import json
+from typing import Dict, Set
 
 from jupyter_server.base.handlers import JupyterHandler
 from tornado import web
 from tornado.websocket import WebSocketHandler
 
-clients = set()
-
 
 class SignalingWebSocketHandler(WebSocketHandler, JupyterHandler):
-    _topics = {}
+    _topics: Dict[str, Set["SignalingWebSocketHandler"]] = {}
 
     async def get(self, *args, **kwargs):
         """

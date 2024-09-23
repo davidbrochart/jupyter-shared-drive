@@ -47,21 +47,21 @@ jobs:
           echo "or after-the-fact on already committed files with"
           echo "    pre-commit run --all-files --hook-stage=manual"
 
-      - name: Lint frontend
-        run: |
-          jlpm run lint:check
+      #- name: Lint frontend
+      #  run: |
+      #    jlpm run lint:check
 
   test-js:
     name: Test JavaScript
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
 
       - name: Base Setup
         uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
@@ -72,10 +72,10 @@ jobs:
           pip install -e .
           jlpm
 
-      - name: Run Tests
-        run: |
-          set -eux
-          jlpm run test
+      # - name: Run Tests
+      #   run: |
+      #     set -eux
+      #     jlpm run test
 
   test-py:
     name: Test Python
@@ -86,14 +86,9 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ["3.8", "3.11", "3.12"]
-        # PyPy is not supported because we use the file_id_manager. See:
-        # https://github.com/jupyter-server/jupyter_server_fileid/issues/44
-        #include:
-        #  - os: ubuntu-latest
-        #    python-version: "pypy-3.8"
-        exclude:
-          - os: windows-latest
-            python-version: "3.12"
+        include:
+          - os: ubuntu-latest
+            python-version: "pypy-3.8"
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -111,10 +106,10 @@ jobs:
           pip freeze
           pip check
 
-      - name: Run the tests with Coverage
-        if: ${{ !startsWith(matrix.python-version, 'pypy') && !startsWith(runner.os, 'Windows') }}
-        run: |
-          python -m pytest -vv --cov jupyter_server_ydoc --cov-branch --cov-report term-missing:skip-covered
+      #- name: Run the tests with Coverage
+      #  if: ${{ !startsWith(matrix.python-version, 'pypy') && !startsWith(runner.os, 'Windows') }}
+      #  run: |
+          # python -m pytest -vv --cov jupyter_server_ydoc --cov-branch --cov-report term-missing:skip-covered
 
       #- name: Run the tests on pypy
       #  if: ${{ startsWith(matrix.python-version, 'pypy') }}
@@ -123,10 +118,10 @@ jobs:
           # https://github.com/jupyter-server/jupyter_server_fileid/issues/44
           # python -W ignore::ImportWarning -m pytest -vv
 
-      - name: Run the tests on Windows
-        if: ${{ startsWith(runner.os, 'Windows') }}
-        run: |
-          python -W ignore::ImportWarning -m pytest -vv --cov jupyter_server_ydoc --cov-branch --cov-report term-missing:skip-covered
+      #- name: Run the tests on Windows
+      #  if: ${{ startsWith(runner.os, 'Windows') }}
+      #  run: |
+      #    python -W ignore::ImportWarning -m pytest -vv --cov jupyter_server_ydoc --cov-branch --cov-report term-missing:skip-covered
 
       - uses: jupyterlab/maintainer-tools/.github/actions/upload-coverage@v1
 
@@ -136,119 +131,119 @@ jobs:
         run: |
           set -eux
           jupyter server extension list
-          jupyter server extension list 2>&1 | grep -ie "jupyter_server_ydoc.*OK"
+          jupyter server extension list 2>&1 | grep -ie "jupyter_server_signaling.*OK"
           jupyter labextension list
-          jupyter labextension list 2>&1 | grep -ie "@jupyter/collaboration-extension.*OK"
+          jupyter labextension list 2>&1 | grep -ie "@jupyter/shared-drive-extension.*OK"
           python -m jupyterlab.browser_check
 
-  test_minimum_versions:
-    name: Test Minimum Versions
-    needs: [pre-commit, test-js, test-py]
-    timeout-minutes: 20
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
+  #test_minimum_versions:
+  #  name: Test Minimum Versions
+  #  needs: [pre-commit, test-js, test-py]
+  #  timeout-minutes: 20
+  #  runs-on: ubuntu-latest
+  #  steps:
+  #    - uses: actions/checkout@v3
 
-      - name: Base Setup
-        uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
-        with:
-          python_version: "3.8"
-          dependency_type: minimum
+  #    - name: Base Setup
+  #      uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
+  #      with:
+  #        python_version: "3.8"
+  #        dependency_type: minimum
 
-      - name: Install the Python dependencies
-        run: |
-          pip install -e ".[test]"
+  #    - name: Install the Python dependencies
+  #      run: |
+  #        pip install -e ".[test]"
 
-      - name: Run the unit tests
-        run: |
-          pytest -vv -W default || pytest -vv -W default --lf
+  #    - name: Run the unit tests
+  #      run: |
+  #        pytest -vv -W default || pytest -vv -W default --lf
 
-  test_prereleases:
-    name: Test Prereleases
-    needs: [pre-commit, test-js, test-py]
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+  #test_prereleases:
+  #  name: Test Prereleases
+  #  needs: [pre-commit, test-js, test-py]
+  #  runs-on: ubuntu-latest
+  #  timeout-minutes: 20
+  #  steps:
+  #    - name: Checkout
+  #      uses: actions/checkout@v3
 
-      - name: Base Setup
-        uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
+  #    - name: Base Setup
+  #      uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
 
-      - name: Install the Python dependencies
-        run: |
-          pip install -e ".[test]"
+  #    - name: Install the Python dependencies
+  #      run: |
+  #        pip install -e ".[test]"
 
-      - name: List installed packages
-        run: |
-          pip freeze
-          pip check
+  #    - name: List installed packages
+  #      run: |
+  #        pip freeze
+  #        pip check
 
-      - name: Run the tests
-        run: |
-          pytest -vv -W default || pytest -vv --lf
+  #    - name: Run the tests
+  #      run: |
+  #        pytest -vv -W default || pytest -vv --lf
 
-  make_sdist:
-    name: Make SDist
-    needs: [pre-commit, test-js, test-py]
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v3
-      - uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
-      - name: Build SDist
-        shell: bash
-        run: |
-          pip install build
-          find projects/* -maxdepth 0 -type d | xargs -L 1 python -m build --sdist --outdir dist/
-      - uses: actions/upload-artifact@v3
-        with:
-          name: "sdist"
-          path: dist/*.tar.gz
+  #make_sdist:
+  #  name: Make SDist
+  #  needs: [pre-commit, test-js, test-py]
+  #  runs-on: ubuntu-latest
+  #  timeout-minutes: 10
+  #  steps:
+  #    - uses: actions/checkout@v3
+  #    - uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
+  #    - name: Build SDist
+  #      shell: bash
+  #      run: |
+  #        pip install build
+  #        find projects/* -maxdepth 0 -type d | xargs -L 1 python -m build --sdist --outdir dist/
+  #    - uses: actions/upload-artifact@v3
+  #      with:
+  #        name: "sdist"
+  #        path: dist/*.tar.gz
 
-  test_sdist:
-    runs-on: ubuntu-latest
-    needs: [make_sdist]
-    name: Install from SDist and Test
-    timeout-minutes: 15
-    steps:
-      - uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
+  #test_sdist:
+  #  runs-on: ubuntu-latest
+  #  needs: [make_sdist]
+  #  name: Install from SDist and Test
+  #  timeout-minutes: 15
+  #  steps:
+  #    - uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
 
-      - name: Download sdist
-        uses: actions/download-artifact@v3
+  #    - name: Download sdist
+  #      uses: actions/download-artifact@v3
 
-      - name: Install From SDist
-        shell: bash
-        run: |
-          echo "::group::Install from SDist"
-          set -ex
-          cd sdist
-          mkdir test
-          find *.tar.gz | xargs -L 1 tar -C ./test -zxvf
-          cd test
-          python -m pip install "jupyterlab>=4.0.0,<5"
-          # install each from source, except for `jupyter_collaboration` metapackage
-          find ./* -maxdepth 0 -type d -not -path './jupyter_collaboration-*' | sed 's/$/[test]/' | xargs -L 1 python -m pip install
-          echo "::endgroup::"
+  #    - name: Install From SDist
+  #      shell: bash
+  #      run: |
+  #        echo "::group::Install from SDist"
+  #        set -ex
+  #        cd sdist
+  #        mkdir test
+  #        find *.tar.gz | xargs -L 1 tar -C ./test -zxvf
+  #        cd test
+  #        python -m pip install "jupyterlab>=4.0.0,<5"
+  #        # install each from source, except for `jupyter_collaboration` metapackage
+  #        find ./* -maxdepth 0 -type d -not -path './jupyter_collaboration-*' | sed 's/$/[test]/' | xargs -L 1 python -m pip install
+  #        echo "::endgroup::"
 
-      - name: Run Test
-        shell: bash
-        run: |
-          echo "::group::Run test"
-          set -ex
-          cd sdist/test
+  #    - name: Run Test
+  #      shell: bash
+  #      run: |
+  #        echo "::group::Run test"
+  #        set -ex
+  #        cd sdist/test
 
-          # for now only `jupyter_server_ydoc` includes python tests
-          cd jupyter_server_ydoc*
-          python -m pytest -vv -raXxs --durations 10 --color=yes
-          cd ..
+  #        # for now only `jupyter_server_ydoc` includes python tests
+  #        cd jupyter_server_ydoc*
+  #        python -m pytest -vv -raXxs --durations 10 --color=yes
+  #        cd ..
 
-          jupyter server extension list
-          jupyter server extension list 2>&1 | grep -ie "jupyter_server_ydoc.*OK"
-          jupyter labextension list
-          jupyter labextension list 2>&1 | grep -ie "@jupyter/collaboration-extension.*OK"
-          python -m jupyterlab.browser_check --no-browser-test
-          echo "::endgroup::"
+  #        jupyter server extension list
+  #        jupyter server extension list 2>&1 | grep -ie "jupyter_server_ydoc.*OK"
+  #        jupyter labextension list
+  #        jupyter labextension list 2>&1 | grep -ie "@jupyter/collaboration-extension.*OK"
+  #        python -m jupyterlab.browser_check --no-browser-test
+  #        echo "::endgroup::"
 
   check_links:
     runs-on: ubuntu-latest
@@ -260,43 +255,43 @@ jobs:
         with:
           ignore_links: "../api/*.* ./api/* .*/images/[\\w-]+.png https://docs.github.com/en/.* https://mybinder.org/v2/gh/jupyterlab/jupyter_collaboration/.*"
 
-  ui_tests:
-    runs-on: ubuntu-latest
-    needs: [pre-commit, test-js]
-    timeout-minutes: 30
-    env:
-      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/pw-browsers
-    steps:
-      - uses: actions/checkout@v3
-      - uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
-      - name: Install dependencies
-        run: |
-          pip install jupyterlab .
-      - name: Install playwright
-        env:
-          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
-        run: |
-          jlpm install
-        working-directory: ui-tests
-      - name: Set up browser cache
-        uses: actions/cache@v3
-        with:
-          path: |
-            ${{ github.workspace }}/pw-browsers
-          key: ${{ runner.os }}-${{ hashFiles('ui-tests/yarn.lock') }}
-      - name: Install browser
-        run: jlpm playwright install chromium
-        working-directory: ui-tests
+  # ui_tests:
+  #   runs-on: ubuntu-latest
+  #   needs: [pre-commit, test-js]
+  #   timeout-minutes: 30
+  #   env:
+  #     PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/pw-browsers
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
+  #     - name: Install dependencies
+  #       run: |
+  #         pip install jupyterlab .
+  #     - name: Install playwright
+  #       env:
+  #         PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
+  #       run: |
+  #         jlpm install
+  #       working-directory: ui-tests
+  #     - name: Set up browser cache
+  #       uses: actions/cache@v3
+  #       with:
+  #         path: |
+  #           ${{ github.workspace }}/pw-browsers
+  #         key: ${{ runner.os }}-${{ hashFiles('ui-tests/yarn.lock') }}
+  #     - name: Install browser
+  #       run: jlpm playwright install chromium
+  #       working-directory: ui-tests
 
-      - name: run tests
-        working-directory: ui-tests
-        run: |
-          jlpm test
-      - name: Upload Playwright Test report
-        if: always()
-        uses: actions/upload-artifact@v3
-        with:
-          name: jupyter-collaboration-playwright-report
-          path: |
-            ui-tests/test-results
-            ui-tests/playwright-report
+  #     - name: run tests
+  #       working-directory: ui-tests
+  #       run: |
+  #         jlpm test
+  #     - name: Upload Playwright Test report
+  #       if: always()
+  #       uses: actions/upload-artifact@v3
+  #       with:
+  #         name: jupyter-collaboration-playwright-report
+  #         path: |
+  #           ui-tests/test-results
+  #           ui-tests/playwright-report

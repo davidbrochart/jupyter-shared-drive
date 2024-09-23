@@ -1,0 +1,43 @@
+name: Publish
+on:
+  push:
+    tags:
+      - '*'
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: |
+          pip install hatch
+          cd projects/jupyter-server-signaling; hatch build ../../dist; cd ../..
+          cd projects/jupyter-shared-docprovider; hatch build ../../dist; cd ../..
+          cd projects/jupyter-shared-drive; hatch build ../../dist; cd ../..
+          cd projects/jupyter-shared-drive-ui; hatch build ../../dist; cd ../..
+      - uses: actions/upload-artifact@v4
+        with:
+          path: ./dist
+
+  pypi-publish:
+    needs: ['build']
+    environment: 'publish'
+
+    name: Upload release to PyPI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+
+      - name: Publish package to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_TOKEN }}
+          packages_dir: artifact/
