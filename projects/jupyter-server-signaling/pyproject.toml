@@ -7,7 +7,7 @@ requires = ["hatchling>=1.4.0"]
 
 [project]
 name = "jupyter-server-signaling"
-version = "0.1.6"
+version = "0.1.7"
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.8"
