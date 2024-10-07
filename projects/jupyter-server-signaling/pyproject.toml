@@ -7,6 +7,7 @@ requires = ["hatchling>=1.4.0"]
 
 [project]
 name = "jupyter-server-signaling"
+version = "0.1.5"
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.8"
@@ -31,10 +32,6 @@ dependencies = [
     "jupyter_server>=2.4.0,<3.0.0",
     "websockets",
 ]
-dynamic = ["version"]
-
-[tool.hatch.version]
-path = "jupyter_server_signaling/_version.py"
 
 [tool.hatch.build.targets.sdist]
 exclude = ["/.github", "/binder", "node_modules"]
