@@ -3,6 +3,7 @@
  * Distributed under the terms of the Modified BSD License.
  */
 
+import { Widget } from '@lumino/widgets';
 import { fileIcon, listIcon, refreshIcon } from '@jupyterlab/ui-components';
 import {
   ILabShell,
@@ -10,7 +11,12 @@ import {
   JupyterFrontEnd,
   JupyterFrontEndPlugin
 } from '@jupyterlab/application';
-import { ToolbarButton } from '@jupyterlab/apputils';
+import {
+  Dialog,
+  ToolbarButton,
+  showDialog,
+  showErrorMessage
+} from '@jupyterlab/apputils';
 import {
   IDefaultFileBrowser,
   IFileBrowserFactory
@@ -156,9 +162,29 @@ export const sharedFileBrowser: JupyterFrontEndPlugin<void> = {
     const importButton = new ToolbarButton({
       icon: fileIcon,
       onClick: async () => {
-        const path = prompt('Please enter the path of the file to import:');
-        if (path !== null) {
-          await (drive as SharedDrive).importFile(path);
+        const importBtn = Dialog.okButton({
+          label: trans.__('Import'),
+          accept: true
+        });
+        const path = await showDialog({
+          title: trans.__('Import File…'),
+          body: new ImportWidget(''),
+          buttons: [Dialog.cancelButton(), importBtn]
+        }).then(result => {
+          if (result.button.accept) {
+            return result.value ?? undefined;
+          }
+          return;
+        });
+        if (path) {
+          try {
+            await (drive as SharedDrive).importFile(path, widget.model.path);
+          } catch (err) {
+            await showErrorMessage(
+              trans.__('File Import Error for %1', path),
+              err as Error
+            );
+          }
         }
       },
       tooltip: 'Import File'
@@ -178,3 +204,28 @@ export const sharedFileBrowser: JupyterFrontEndPlugin<void> = {
     app.shell.add(widget, 'left');
   }
 };
+
+class ImportWidget extends Widget {
+  /**
+   * Construct a new import widget.
+   */
+  constructor(path: string) {
+    super({ node: createImportNode(path) });
+  }
+
+  /**
+   * Get the value for the widget.
+   */
+  getValue(): string {
+    return (this.node as HTMLInputElement).value;
+  }
+}
+
+/**
+ * Create the node for an import widget.
+ */
+function createImportNode(path: string): HTMLElement {
+  const input = document.createElement('input');
+  input.value = path;
+  return input;
+}

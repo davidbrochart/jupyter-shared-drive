@@ -1,6 +1,8 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
+import { Widget } from '@lumino/widgets';
+import { Dialog, showDialog, showErrorMessage } from '@jupyterlab/apputils';
 import { PromiseDelegate } from '@lumino/coreutils';
 import { WebrtcProvider as YWebrtcProvider } from 'y-webrtc';
 import { ISignal, Signal } from '@lumino/signaling';
@@ -113,14 +115,21 @@ export class SharedDrive implements ICollaborativeDrive {
 
   async deleteCheckpoint(path: string, checkpointID: string): Promise<void> {}
 
-  async importFile(path: string) {
+  async importFile(path: string, cwd: string) {
     const model =
       await this._defaultFileBrowser.model.manager.services.contents.get(path, {
         content: true
       });
-    this._ydrive.createFile(model.name); // FIXME: create file in cwd?
+    let currentPath: string;
+    if (cwd === `${this.name}:`) {
+      currentPath = model.name;
+    } else {
+      currentPath = `${cwd.slice(this.name.length + 1)}/${model.name}`;
+    }
+    this._importedFiles.set(currentPath, path);
+    this._ydrive.createFile(currentPath);
     const sharedModel = this.sharedModelFactory.createNew({
-      path: model.name,
+      path: currentPath,
       format: model.format,
       contentType: model.type,
       collaborative: true
@@ -320,6 +329,33 @@ export class SharedDrive implements ICollaborativeDrive {
     localPath: string,
     options: Partial<Contents.IModel> = {}
   ): Promise<Contents.IModel> {
+    const exportBtn = Dialog.okButton({
+      label: this._trans.__('Export'),
+      accept: true
+    });
+    const path = await showDialog({
+      title: this._trans.__('Export File…'),
+      body: new ExportWidget(this._importedFiles.get(localPath) ?? localPath),
+      buttons: [Dialog.cancelButton(), exportBtn]
+    }).then(result => {
+      if (result.button.accept) {
+        return result.value ?? undefined;
+      }
+      return;
+    });
+    if (path) {
+      try {
+        await this._defaultFileBrowser.model.manager.services.contents.save(
+          path,
+          options
+        );
+      } catch (err) {
+        await showErrorMessage(
+          this._trans.__('File Export Error for %1', path),
+          err as Error
+        );
+      }
+    }
     const fetchOptions: Contents.IFetchOptions = {
       type: options.type,
       format: options.format,
@@ -391,6 +427,7 @@ export class SharedDrive implements ICollaborativeDrive {
   private _fileSystemProvider: YWebrtcProvider;
   private _ready = new PromiseDelegate<void>();
   private _signalingServers: string[] = [];
+  private _importedFiles: Map<string, string> = new Map();
 }
 
 interface IFileProvider {
@@ -453,4 +490,29 @@ class SharedModelFactory implements ISharedModelFactory {
 
     return;
   }
+}
+
+class ExportWidget extends Widget {
+  /**
+   * Construct a new export widget.
+   */
+  constructor(path: string) {
+    super({ node: createExportNode(path) });
+  }
+
+  /**
+   * Get the value for the widget.
+   */
+  getValue(): string {
+    return (this.node as HTMLInputElement).value;
+  }
+}
+
+/**
+ * Create the node for an export widget.
+ */
+function createExportNode(path: string): HTMLElement {
+  const input = document.createElement('input');
+  input.value = path;
+  return input;
 }
