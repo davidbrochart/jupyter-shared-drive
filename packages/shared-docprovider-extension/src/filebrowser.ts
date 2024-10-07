@@ -27,7 +27,7 @@ import { ITranslator, nullTranslator } from '@jupyterlab/translation';
 import { YFile, YNotebook } from '@jupyter/ydoc';
 
 //import { ICollaborativeDrive, IGlobalAwareness } from '@jupyter/docprovider';
-import { ICollaborativeDrive } from '@jupyter/docprovider';
+import { ICollaborativeDrive } from '@jupyter/collaborative-drive';
 import { SharedDrive } from '@jupyter/shared-docprovider';
 //import { Awareness } from 'y-protocols/awareness';
 
