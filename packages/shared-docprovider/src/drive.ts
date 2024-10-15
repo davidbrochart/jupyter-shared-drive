@@ -28,7 +28,8 @@ import {
   ICollaborativeDrive,
   ISharedModelFactory,
   SharedDocumentFactory
-} from '@jupyter/docprovider';
+} from '@jupyter/collaborative-drive';
+import { IndexeddbPersistence } from 'y-indexeddb';
 import { Awareness } from 'y-protocols/awareness';
 
 const signalingServers = JSON.parse(PageConfig.getOption('signalingServers'));
@@ -84,6 +85,10 @@ export class SharedDrive implements ICollaborativeDrive {
       }
     );
     this._fileSystemProvider.on('synced', this._onSync);
+    const indexeddbProvider = new IndexeddbPersistence('', this._ydrive.ydoc);
+    indexeddbProvider.on('synced', () => {
+      console.log('content from the database is loaded for file system');
+    });
   }
 
   //get providers(): Map<string, WebrtcProvider> {
@@ -349,6 +354,7 @@ export class SharedDrive implements ICollaborativeDrive {
           path,
           options
         );
+        this._importedFiles.set(localPath, path);
       } catch (err) {
         await showErrorMessage(
           this._trans.__('File Export Error for %1', path),
@@ -412,6 +418,13 @@ export class SharedDrive implements ICollaborativeDrive {
       }
     });
 
+    const indexeddbProvider = new IndexeddbPersistence(
+      options.path,
+      sharedModel.ydoc
+    );
+    indexeddbProvider.on('synced', () => {
+      console.log(`content from the database is loaded for: ${options.path}`);
+    });
     return sharedModel;
   };
 
