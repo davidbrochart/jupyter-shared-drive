@@ -3,14 +3,50 @@
  * Distributed under the terms of the Modified BSD License.
  */
 
+import { UUID } from '@lumino/coreutils';
 import * as Y from 'yjs';
 import { Path } from './path';
 
+/**
+ * A class for accessing the file system.
+ * It consists of a shared document that has a root `Y.Map` under 'root'.
+ * The root map's keys are the top-level file and directory names.
+ * For keys corresponding to files, the value is an ID (string).
+ * For keys corresponding to directories, the value is another `Y.Map` with the same structure
+ * as the root map, describing the content of the directory, and so on.
+ */
 export class YDrive {
   constructor() {
     this._ydoc = new Y.Doc();
     this._yroot = this._ydoc.getMap('root');
+    //this._yroot.observeDeep((events: Array<Y.YEvent<any>>) => { this._on_change(events); });
   }
+
+  //private _on_change(events: Array<Y.YEvent<any>>) {
+  //  for (let event of events) {
+  //    console.log('event', event);
+  //    for (let name of event.path) {
+  //      console.log('name', name);
+  //    }
+  //    for (let [key, change] of event.changes.keys) {
+  //      if (change.action === 'add') {
+  //        console.log('add', key, change);
+  //      } else if (change.action === 'update') {
+  //        console.log('update', key, change);
+  //      } else if (change.action === 'delete') {
+  //        console.log('delete', key, change);
+  //        const path = `${event.path.join('/')}/${key}`;
+  //        try {
+  //          this.get(path);
+  //          console.log('path exists:', path);
+  //        }
+  //        catch(error) {
+  //          console.log('path doesnt exist:', path);
+  //        }
+  //      }
+  //    };
+  //  }
+  //}
 
   get ydoc(): Y.Doc {
     return this._ydoc;
@@ -20,11 +56,41 @@ export class YDrive {
     return new Y.Map();
   }
 
-  isDir(path: string): boolean {
-    return this.get(path) ? true : false;
+  exists(path: string): boolean {
+    if (path === '') {
+      return true;
+    }
+    const _path = new Path(path);
+    const parent = this.get(_path.parent) as Y.Map<any>;
+    return parent.has(_path.name);
   }
 
-  get(path: string): Y.Map<any> | null {
+  isDir(path: string): boolean {
+    return typeof this.get(path) !== 'string';
+  }
+
+  getId(path: string): string {
+    const content = this.get(path);
+    if (typeof content !== 'string') {
+      throw new Error(`Not a file: ${path}`);
+    }
+    return content;
+  }
+
+  listDir(path: string): Map<string, any> {
+    const dirList = new Map<string, any>();
+    const content = this.get(path);
+    if (typeof content === 'string') {
+      throw new Error(`Not a directory: ${path}`);
+    }
+    for (const [key, val] of content) {
+      const isDir = typeof val !== 'string';
+      dirList.set(key, { isDir });
+    }
+    return dirList;
+  }
+
+  get(path: string): Y.Map<any> | string {
     if (path === '') {
       return this._yroot;
     }
@@ -38,7 +104,7 @@ export class YDrive {
         throw new Error(`No entry "${part}" in "${cwd}"`);
       }
       current = current.get(part);
-      if (current) {
+      if (typeof current !== 'string') {
         cwd = cwd === '' ? part : `${cwd}/${part}`;
       } else if (idx < lastIdx) {
         throw new Error(`Entry "${part}" in "${cwd}" is not a directory.`);
@@ -52,7 +118,7 @@ export class YDrive {
     ext = ext ?? '';
     let idx = 0;
     let newName = '';
-    const parent = this.get(path)!;
+    const parent = this.get(path) as Y.Map<any>;
     const dir = parent.toJSON();
     while (newName === '') {
       const _newName: string = `shared${idx}${ext}`;
@@ -74,39 +140,43 @@ export class YDrive {
   }
 
   createFile(path: string) {
-    const parent = this.get(new Path(path).parent)!;
-    parent.set(new Path(path).name, null);
+    const _path = new Path(path);
+    const parent = this.get(_path.parent) as Y.Map<any>;
+    parent.set(_path.name, UUID.uuid4());
   }
 
   createDirectory(path: string) {
-    const parent = this.get(new Path(path).parent)!;
-    parent.set(new Path(path).name, this._newDir());
+    const _path = new Path(path);
+    const parent = this.get(_path.parent) as Y.Map<any>;
+    parent.set(_path.name, this._newDir());
   }
 
   delete(path: string) {
-    const parts = new Path(path).parts;
-    if (parts.length === 0) {
+    const _path = new Path(path);
+    if (_path.parts.length === 0) {
       throw new Error('Cannot delete root directory');
     }
-    const parent = this.get(new Path(path).parent)!;
-    parent.delete(new Path(path).name);
+    const parent = this.get(_path.parent) as Y.Map<any>;
+    parent.delete(_path.name);
   }
 
   move(fromPath: string, toPath: string) {
-    if (new Path(fromPath).parts.length === 0) {
+    const _fromPath = new Path(fromPath);
+    const _toPath = new Path(toPath);
+    if (_fromPath.parts.length === 0) {
       throw new Error('Cannot move root directory');
     }
-    if (new Path(toPath).parts.length === 0) {
+    if (_toPath.parts.length === 0) {
       throw new Error('Cannot move to root directory');
     }
-    const fromParent = this.get(new Path(fromPath).parent)!;
-    const toParent = this.get(new Path(toPath).parent)!;
-    let content = fromParent.get(new Path(fromPath).name);
-    if (content !== null) {
+    const fromParent = this.get(_fromPath.parent) as Y.Map<any>;
+    const toParent = this.get(_toPath.parent) as Y.Map<any>;
+    let content = fromParent.get(_fromPath.name);
+    if (typeof content !== 'string') {
       content = content.clone();
     }
     this.delete(fromPath);
-    toParent.set(new Path(toPath).name, content);
+    toParent.set(_toPath.name, content);
   }
 
   private _ydoc: Y.Doc;

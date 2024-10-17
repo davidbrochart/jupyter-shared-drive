@@ -4,7 +4,12 @@
  */
 
 import { Widget } from '@lumino/widgets';
-import { fileIcon, listIcon, refreshIcon } from '@jupyterlab/ui-components';
+import {
+  downloadIcon,
+  fileUploadIcon,
+  listIcon,
+  refreshIcon
+} from '@jupyterlab/ui-components';
 import {
   ILabShell,
   IRouter,
@@ -50,7 +55,7 @@ export const drive: JupyterFrontEndPlugin<ICollaborativeDrive> = {
     translator = translator ?? nullTranslator;
     const trans = translator.load('jupyter-shared-drive');
     const drive = new SharedDrive(
-      app.serviceManager.user,
+      app,
       defaultFileBrowser,
       trans,
       //globalAwareness,
@@ -160,15 +165,16 @@ export const sharedFileBrowser: JupyterFrontEndPlugin<void> = {
     widget.title.icon = listIcon;
 
     const importButton = new ToolbarButton({
-      icon: fileIcon,
+      icon: downloadIcon,
       onClick: async () => {
         const importBtn = Dialog.okButton({
           label: trans.__('Import'),
           accept: true
         });
+        const toPath = widget.model.path.slice(drive.name.length + 1);
         const path = await showDialog({
-          title: trans.__('Import File…'),
-          body: new ImportWidget(''),
+          title: trans.__('Import file: enter source and destination paths'),
+          body: new InputWidget('', toPath),
           buttons: [Dialog.cancelButton(), importBtn]
         }).then(result => {
           if (result.button.accept) {
@@ -178,7 +184,7 @@ export const sharedFileBrowser: JupyterFrontEndPlugin<void> = {
         });
         if (path) {
           try {
-            await (drive as SharedDrive).importFile(path, widget.model.path);
+            await (drive as SharedDrive).importFile(path[0], path[1]);
           } catch (err) {
             await showErrorMessage(
               trans.__('File Import Error for %1', path),
@@ -188,6 +194,39 @@ export const sharedFileBrowser: JupyterFrontEndPlugin<void> = {
         }
       },
       tooltip: 'Import File'
+    });
+
+    const exportButton = new ToolbarButton({
+      icon: fileUploadIcon,
+      onClick: async () => {
+        const exportBtn = Dialog.okButton({
+          label: trans.__('Export'),
+          accept: true
+        });
+        const name = (app.shell.currentWidget as any).context.contentsModel
+          .name;
+        const path = await showDialog({
+          title: trans.__('Export file: enter destination path'),
+          body: new InputWidget(name),
+          buttons: [Dialog.cancelButton(), exportBtn]
+        }).then(result => {
+          if (result.button.accept) {
+            return result.value ?? undefined;
+          }
+          return;
+        });
+        if (path) {
+          try {
+            await (drive as SharedDrive).exportFile(path[0]);
+          } catch (err) {
+            await showErrorMessage(
+              trans.__('File Export Error for %1', path),
+              err as Error
+            );
+          }
+        }
+      },
+      tooltip: 'Export File'
     });
 
     const refreshButton = new ToolbarButton({
@@ -200,32 +239,45 @@ export const sharedFileBrowser: JupyterFrontEndPlugin<void> = {
 
     widget.toolbar.insertItem(0, 'refresh', refreshButton);
     widget.toolbar.insertItem(1, 'import', importButton);
+    widget.toolbar.insertItem(2, 'export', exportButton);
 
     app.shell.add(widget, 'left');
   }
 };
 
-class ImportWidget extends Widget {
+class InputWidget extends Widget {
   /**
-   * Construct a new import widget.
+   * Construct a new input widget.
    */
-  constructor(path: string) {
-    super({ node: createImportNode(path) });
+  constructor(path1: string, path2?: string) {
+    super({ node: createInputNode(path1, path2) });
   }
 
   /**
    * Get the value for the widget.
    */
-  getValue(): string {
-    return (this.node as HTMLInputElement).value;
+  getValue(): string[] {
+    const inputs = this.node.children;
+    const value = [(inputs[0] as HTMLInputElement).value];
+    if (inputs.length > 1) {
+      value.push((inputs[1] as HTMLInputElement).value);
+    }
+    return value;
   }
 }
 
 /**
- * Create the node for an import widget.
+ * Create the node for a input widget.
  */
-function createImportNode(path: string): HTMLElement {
-  const input = document.createElement('input');
-  input.value = path;
-  return input;
+function createInputNode(path1: string, path2?: string): HTMLElement {
+  const parent = document.createElement('div');
+  const input1 = document.createElement('input');
+  parent.appendChild(input1);
+  input1.value = path1;
+  if (path2 !== undefined) {
+    const input2 = document.createElement('input');
+    input2.value = path2;
+    parent.appendChild(input2);
+  }
+  return parent;
 }
