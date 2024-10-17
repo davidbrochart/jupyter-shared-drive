@@ -3,7 +3,6 @@
 | Distributed under the terms of the Modified BSD License.
 |----------------------------------------------------------------------------*/
 
-import { showErrorMessage, Dialog } from '@jupyterlab/apputils';
 import { User } from '@jupyterlab/services';
 import { TranslationBundle } from '@jupyterlab/translation';
 
@@ -43,7 +42,6 @@ export class WebrtcProvider implements IDocumentProvider {
     this._sharedModel = options.model;
     this._awareness = options.model.awareness;
     this._yWebrtcProvider = null;
-    this._trans = options.translator;
     this._signalingServers = options.signalingServers;
 
     const user = options.user;
@@ -96,22 +94,11 @@ export class WebrtcProvider implements IDocumentProvider {
     );
 
     this._yWebrtcProvider.on('synced', this._onSync);
-    this._yWebrtcProvider.on('peers', this._onPeers);
   }
 
   private _onUserChanged(user: User.IManager): void {
     this._awareness.setLocalStateField('user', user.identity);
   }
-
-  private _onPeers = (event: any): void => {
-    if (event.webrtcPeers.length === 0) {
-      showErrorMessage(
-        this._trans.__('All clients disconnected'),
-        `If you close '${this._path}', all data will be lost (unless someone reconnects).`,
-        [Dialog.okButton()]
-      );
-    }
-  };
 
   private _onSync = (synced: any) => {
     if (synced.synced) {
@@ -128,7 +115,6 @@ export class WebrtcProvider implements IDocumentProvider {
   private _ready = new PromiseDelegate<void>();
   private _sharedModel: YDocument<DocumentChange>;
   private _yWebrtcProvider: YWebrtcProvider | null;
-  private _trans: TranslationBundle;
   private _signalingServers: string[];
 }
 

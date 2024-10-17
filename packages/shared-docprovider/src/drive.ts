@@ -1,8 +1,7 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-import { Widget } from '@lumino/widgets';
-import { Dialog, showDialog, showErrorMessage } from '@jupyterlab/apputils';
+import { JupyterFrontEnd } from '@jupyterlab/application';
 import { PromiseDelegate } from '@lumino/coreutils';
 import { WebrtcProvider as YWebrtcProvider } from 'y-webrtc';
 import { ISignal, Signal } from '@lumino/signaling';
@@ -44,13 +43,13 @@ export class SharedDrive implements ICollaborativeDrive {
    * @param user - The user manager to add the identity to the awareness of documents.
    */
   constructor(
-    user: User.IManager,
+    app: JupyterFrontEnd,
     defaultFileBrowser: IDefaultFileBrowser,
     translator: TranslationBundle,
     globalAwareness: Awareness | null,
     name: string
   ) {
-    this._user = user;
+    this._user = app.serviceManager.user;
     this._defaultFileBrowser = defaultFileBrowser;
     this._trans = translator;
     this._globalAwareness = globalAwareness;
@@ -76,6 +75,7 @@ export class SharedDrive implements ICollaborativeDrive {
       }
     });
     this.name = name;
+    this._app = app;
     this._fileSystemProvider = new YWebrtcProvider(
       'fileSystem',
       this._ydrive.ydoc,
@@ -120,21 +120,50 @@ export class SharedDrive implements ICollaborativeDrive {
 
   async deleteCheckpoint(path: string, checkpointID: string): Promise<void> {}
 
-  async importFile(path: string, cwd: string) {
-    const model =
-      await this._defaultFileBrowser.model.manager.services.contents.get(path, {
-        content: true
-      });
-    let currentPath: string;
-    if (cwd === `${this.name}:`) {
-      currentPath = model.name;
-    } else {
-      currentPath = `${cwd.slice(this.name.length + 1)}/${model.name}`;
+  async exportFile(toPath: string) {
+    const _fromPath = (
+      this._app.shell.currentWidget as any
+    ).context.contentsModel.path.slice(this.name.length + 1);
+    const type = (this._app.shell.currentWidget as any).context.contentsModel
+      .type;
+    const format =
+      (this._app.shell.currentWidget as any).context.contentsModel.format ??
+      'text';
+    const fileId = this._ydrive.getId(_fromPath);
+    const key = `${format}:${type}:${fileId}`;
+    const fileProvider = this._fileProviders.get(key);
+    const content = fileProvider?.sharedModel.getSource();
+    if (fileProvider) {
+      const options = {
+        type,
+        format,
+        content
+      };
+      await this._defaultFileBrowser.model.manager.services.contents.save(
+        toPath,
+        options
+      );
     }
-    this._importedFiles.set(currentPath, path);
-    this._ydrive.createFile(currentPath);
+  }
+
+  async importFile(fromPath: string, toPath: string) {
+    const model =
+      await this._defaultFileBrowser.model.manager.services.contents.get(
+        fromPath,
+        {
+          content: true
+        }
+      );
+    if (this._ydrive.exists(toPath) && this._ydrive.isDir(toPath)) {
+      if (toPath === '') {
+        toPath = model.name;
+      } else {
+        toPath = toPath + '/' + model.name;
+      }
+    }
+    this._ydrive.createFile(toPath);
     const sharedModel = this.sharedModelFactory.createNew({
-      path: currentPath,
+      path: toPath,
       format: model.format,
       contentType: model.type,
       collaborative: true
@@ -290,13 +319,11 @@ export class SharedDrive implements ICollaborativeDrive {
 
     // It's a directory.
     const content: any[] = [];
-    const dirContent = this._ydrive.get(localPath)!;
-    for (const [key, value] of dirContent) {
-      const isDir = value !== null;
-      const type = isDir ? 'directory' : 'file';
+    for (const [name, info] of this._ydrive.listDir(localPath)) {
+      const type = info.isDir ? 'directory' : 'file';
       content.push({
-        name: key,
-        path: `${localPath}/${key}`,
+        name,
+        path: `${localPath}/${name}`,
         type,
         writable: true,
         created: '',
@@ -334,34 +361,6 @@ export class SharedDrive implements ICollaborativeDrive {
     localPath: string,
     options: Partial<Contents.IModel> = {}
   ): Promise<Contents.IModel> {
-    const exportBtn = Dialog.okButton({
-      label: this._trans.__('Export'),
-      accept: true
-    });
-    const path = await showDialog({
-      title: this._trans.__('Export File…'),
-      body: new ExportWidget(this._importedFiles.get(localPath) ?? localPath),
-      buttons: [Dialog.cancelButton(), exportBtn]
-    }).then(result => {
-      if (result.button.accept) {
-        return result.value ?? undefined;
-      }
-      return;
-    });
-    if (path) {
-      try {
-        await this._defaultFileBrowser.model.manager.services.contents.save(
-          path,
-          options
-        );
-        this._importedFiles.set(localPath, path);
-      } catch (err) {
-        await showErrorMessage(
-          this._trans.__('File Export Error for %1', path),
-          err as Error
-        );
-      }
-    }
     const fetchOptions: Contents.IFetchOptions = {
       type: options.type,
       format: options.format,
@@ -381,10 +380,8 @@ export class SharedDrive implements ICollaborativeDrive {
       return sharedModel;
     }
 
-    // Check if file exists.
-    this._ydrive.get(options.path);
-
-    const key = `${options.format}:${options.contentType}:${options.path}`;
+    const fileId = this._ydrive.getId(options.path);
+    const key = `${options.format}:${options.contentType}:${fileId}`;
 
     // Check if shared model alread exists.
     const fileProvider = this._fileProviders.get(key);
@@ -396,10 +393,15 @@ export class SharedDrive implements ICollaborativeDrive {
       this.sharedModelFactory as SharedModelFactory
     ).documentFactories.get(options.contentType)!;
     const sharedModel = factory(options);
+    sharedModel.changed.connect((_: any, event: any) => {
+      if (!event.stateChange) {
+        sharedModel.ystate.set('dirty', false);
+      }
+    });
 
     const provider = new WebrtcProvider({
       url: '',
-      path: options.path,
+      path: fileId,
       format: options.format,
       contentType: options.contentType,
       model: sharedModel,
@@ -419,11 +421,11 @@ export class SharedDrive implements ICollaborativeDrive {
     });
 
     const indexeddbProvider = new IndexeddbPersistence(
-      options.path,
+      fileId,
       sharedModel.ydoc
     );
     indexeddbProvider.on('synced', () => {
-      console.log(`content from the database is loaded for: ${options.path}`);
+      console.log(`content from the database is loaded for: ${fileId}`);
     });
     return sharedModel;
   };
@@ -440,7 +442,7 @@ export class SharedDrive implements ICollaborativeDrive {
   private _fileSystemProvider: YWebrtcProvider;
   private _ready = new PromiseDelegate<void>();
   private _signalingServers: string[] = [];
-  private _importedFiles: Map<string, string> = new Map();
+  private _app: JupyterFrontEnd;
 }
 
 interface IFileProvider {
@@ -503,29 +505,4 @@ class SharedModelFactory implements ISharedModelFactory {
 
     return;
   }
-}
-
-class ExportWidget extends Widget {
-  /**
-   * Construct a new export widget.
-   */
-  constructor(path: string) {
-    super({ node: createExportNode(path) });
-  }
-
-  /**
-   * Get the value for the widget.
-   */
-  getValue(): string {
-    return (this.node as HTMLInputElement).value;
-  }
-}
-
-/**
- * Create the node for an export widget.
- */
-function createExportNode(path: string): HTMLElement {
-  const input = document.createElement('input');
-  input.value = path;
-  return input;
 }
