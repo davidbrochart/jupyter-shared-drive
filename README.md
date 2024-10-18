@@ -23,3 +23,5 @@ Or using ``conda``/``mamba``/``micromamba`` (soon!):
 ```bash
 conda install -c conda-forge jupyter-shared-drive
 ```
+
+In JupyterLab, a new drive is made available with prefix `Shared:`, and accessible through a `Shared Drive` file browser at the bottom of the left toolbar. It is separate from the default drive (accessible through the file browser at the top), but files can be imported/exported from/to it. Files in the shared drive are stored in each client's browser, and synchronized with connected clients.
