@@ -7,7 +7,7 @@ requires = ["hatchling>=1.4.0", "hatch-nodejs-version", "jupyterlab>=4.0.0"]
 
 [project]
 name = "jupyter-shared-drive-monorepo"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dependencies = [
     # jupyter-server extensions
     "jupyter-server-signaling @ {root:uri}/projects/jupyter-server-signaling",

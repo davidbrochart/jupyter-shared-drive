@@ -7,7 +7,7 @@ requires = ["hatchling>=1.4.0"]
 
 [project]
 name = "jupyter-shared-drive"
-version = "0.2.0"
+version = "0.2.1"
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.9"
@@ -30,9 +30,9 @@ classifiers = [
     "Framework :: Jupyter :: JupyterLab :: Extensions :: Prebuilt",
 ]
 dependencies = [
-    "jupyter-server-signaling>=0.2.0",
-    "jupyter-shared-drive-ui>=0.2.0",
-    "jupyter-shared-docprovider>=0.2.0"
+    "jupyter-server-signaling>=0.2.1",
+    "jupyter-shared-drive-ui>=0.2.1",
+    "jupyter-shared-docprovider>=0.2.1"
 ]
 
 [tool.check-wheel-contents]
