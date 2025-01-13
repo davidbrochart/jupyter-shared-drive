@@ -7,10 +7,10 @@ requires = ["hatchling>=1.4.0"]
 
 [project]
 name = "jupyter-server-signaling"
-version = "0.1.9"
+version = "0.2.0"
 readme = "README.md"
 license = { file = "LICENSE" }
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 description = "jupyter-server extension for WebRTC signaling."
 classifiers = [
     "Intended Audience :: Developers",
@@ -18,11 +18,11 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: BSD License",
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Framework :: Jupyter"
 ]
 authors = [
