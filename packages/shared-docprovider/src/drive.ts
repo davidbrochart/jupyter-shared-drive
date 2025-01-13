@@ -12,10 +12,7 @@ import { Contents, User } from '@jupyterlab/services';
 import {
   DocumentChange,
   ISharedDocument,
-  ISharedFile,
-  ISharedNotebook,
   YDocument,
-  YNotebook
 } from '@jupyter/ydoc';
 
 import { IDefaultFileBrowser } from '@jupyterlab/filebrowser';
@@ -169,13 +166,7 @@ export class SharedDrive implements ICollaborativeDrive {
       collaborative: true
     });
     if (sharedModel) {
-      // FIXME: replace with sharedModel.source=model.content
-      // when https://github.com/jupyter-server/jupyter_ydoc/pull/273 is merged
-      if (sharedModel instanceof YNotebook) {
-        (sharedModel as ISharedNotebook).fromJSON(model.content);
-      } else {
-        (sharedModel as ISharedFile).setSource(model.content);
-      }
+      sharedModel.setSource(model.content);
     }
   }
 

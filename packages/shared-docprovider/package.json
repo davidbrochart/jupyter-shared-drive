@@ -41,10 +41,12 @@
     "watch": "tsc -b --watch"
   },
   "dependencies": {
-    "@jupyter/collaborative-drive": "^3.0.0-beta.8",
-    "@jupyter/ydoc": "^2.0.0 || ^3.0.0-a3",
-    "@jupyterlab/coreutils": "^6.0.5",
-    "@jupyterlab/services": "^7.0.5",
+    "@jupyter/collaborative-drive": "^3.0.0",
+    "@jupyter/ydoc": "^3.0.0",
+    "@jupyterlab/application": "^4.3.0",
+    "@jupyterlab/coreutils": "^6.3.0",
+    "@jupyterlab/services": "^7.3.0",
+    "@jupyterlab/translation": "^4.3.0",
     "@lumino/coreutils": "^2.1.0",
     "@lumino/disposable": "^2.1.0",
     "@lumino/signaling": "^2.1.0",
